@@ -1,0 +1,8 @@
+# Rust files
+/target
+**/*.rs.bk
+# Settings file for debug
+settings.toml
+# intelliJ IDEA
+*.iml
+/.idea
