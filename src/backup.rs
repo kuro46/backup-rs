@@ -30,7 +30,9 @@ pub fn start(settings: Settings, archiver: &mut Builder<File>) {
         }
     }
 
-    info!("Backup ended! ({} files)", complete_count);
+    info!("Finishing...");
+    archiver.finish().unwrap();
+    info!("Backup finished! ({} files)", complete_count);
 }
 
 fn execute_path(path: &Path, root_path: &str, target_name: &str, archiver: &mut Builder<File>, listener: &mut FnMut()) {
