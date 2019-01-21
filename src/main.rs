@@ -5,6 +5,8 @@ extern crate serde_derive;
 
 use std::env;
 use std::fs::File;
+use std::io;
+use std::path::Path;
 
 use chrono::Utc;
 use env_logger;
@@ -45,8 +47,19 @@ fn initialize_logger() {
 fn prepare_start(archive_path: &str) -> Builder<File> {
     info!("Preparing to start...");
 
-    let file_path = Utc::now().format(archive_path).to_string();
-    let file = File::create(file_path).unwrap();
+    let file_path_str = Utc::now().format(archive_path).to_string();
+    let file_path = Path::new(&file_path_str);
+    if file_path.exists() {
+        warn!("File: \"{}\" already exists!", file_path_str);
+        warn!("overwrite it? (Y/N)");
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        if input.trim() != "y" {
+            info!("Exiting...");
+            std::process::exit(0);
+        }
+    }
+    let file = File::create(file_path_str).unwrap();
 
     Builder::new(file)
 }
