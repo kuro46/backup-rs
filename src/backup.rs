@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fs;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::Read;
 use std::path::Path;
 
 use tar::Builder;
@@ -19,15 +19,14 @@ pub fn start(targets: Vec<Target>,
 
         info!("Current target: {}", target.name.as_str());
 
-        for path_str in target.paths {
-            let path_str = path_str.as_str();
-            info!("Current path: {}", path_str);
+        for path in target.paths {
+            info!("Current path: {}", path);
 
-            let path = Path::new(path_str).canonicalize().unwrap();
-            let path_str_length = path.to_str().unwrap().len();
+            let path = Path::new(&path).canonicalize().unwrap();
+            let path_length = path.to_str().unwrap().len();
             execute_path(path_prefix,
                          &path,
-                         path_str_length,
+                         path_length,
                          archiver, &mut || {
                     complete_count += 1;
                     if complete_count % 1000 == 0 {
