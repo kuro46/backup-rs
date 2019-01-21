@@ -17,7 +17,7 @@ mod backup;
 fn main() {
     for arg in std::env::args() {
         match arg.as_str() {
-            "version" => {
+            "--version" => {
                 println!(env!("CARGO_PKG_VERSION"));
                 return;
             },
