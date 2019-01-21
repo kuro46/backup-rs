@@ -6,11 +6,13 @@ use std::path::Path;
 
 use tar::Builder;
 
-pub fn start(settings: Settings, archiver: &mut Builder<File>) {
+pub fn start(targets: Vec<Target>,
+             filters: Vec<Filter>,
+             archiver: &mut Builder<File>) {
     info!("Backup started!");
 
     let mut complete_count: u64 = 0;
-    for target in settings.targets {
+    for target in targets {
         let mut path_prefix = target.name.clone();
         path_prefix.push('/');
         let path_prefix = path_prefix.as_str();
@@ -94,37 +96,6 @@ fn execute_file(path_prefix: &str,
     trace!("Archived: {}", entry_path_str);
 
     listener();
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Settings {
-    pub archive_path: String,
-    pub targets: Vec<Target>,
-    pub filters: Vec<Filter>,
-}
-
-impl Settings {
-    pub fn load() -> Settings {
-        info!("Loading settings...");
-
-        let settings_path = Path::new("./settings.toml");
-        if !settings_path.exists() {
-            warn!("Settings file not exists! creating it and exiting...");
-            File::create(settings_path).unwrap();
-            std::process::exit(1);
-        }
-        let settings_file = File::open("settings.toml").unwrap();
-        let mut reader = BufReader::new(settings_file);
-
-        let mut settings_buffer = String::new();
-        reader.read_to_string(&mut settings_buffer).unwrap();
-        let settings: Settings = toml::from_str(&settings_buffer.as_str()).unwrap();
-
-        debug!("Settings: {:?}", settings);
-        info!("Settings loaded.");
-
-        settings
-    }
 }
 
 #[derive(Deserialize, Debug)]

@@ -6,13 +6,15 @@ extern crate serde_derive;
 use std::env;
 use std::fs::File;
 use std::io;
+use std::io::BufReader;
+use std::io::Read;
 use std::path::Path;
 
 use chrono::Utc;
 use env_logger;
 use tar::Builder;
 
-use backup::Settings;
+use backup::{Filter, Target};
 
 mod backup;
 
@@ -31,7 +33,9 @@ fn main() {
     let settings = Settings::load();
     let mut archiver = prepare_start(settings.archive_path.as_str());
 
-    backup::start(settings, &mut archiver);
+    backup::start(settings.targets,
+                  settings.filters.unwrap_or_else(|| { Vec::new() }),
+                  &mut archiver);
 }
 
 fn initialize_logger() {
@@ -64,4 +68,35 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
     Builder::new(file)
 }
 
+
+#[derive(Deserialize, Debug)]
+pub struct Settings {
+    pub archive_path: String,
+    pub targets: Vec<Target>,
+    pub filters: Option<Vec<Filter>>,
+}
+
+impl Settings {
+    pub fn load() -> Settings {
+        info!("Loading settings...");
+
+        let settings_path = Path::new("./settings.toml");
+        if !settings_path.exists() {
+            warn!("Settings file not exists! creating it and exiting...");
+            File::create(settings_path).unwrap();
+            std::process::exit(1);
+        }
+        let settings_file = File::open("settings.toml").unwrap();
+        let mut reader = BufReader::new(settings_file);
+
+        let mut settings_buffer = String::new();
+        reader.read_to_string(&mut settings_buffer).unwrap();
+        let settings: Settings = toml::from_str(&settings_buffer.as_str()).unwrap();
+
+        debug!("Settings: {:?}", settings);
+        info!("Settings loaded.");
+
+        settings
+    }
+}
 
