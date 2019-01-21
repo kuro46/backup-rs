@@ -15,6 +15,16 @@ use backup::Settings;
 mod backup;
 
 fn main() {
+    for arg in std::env::args() {
+        match arg.as_str() {
+            "version" => {
+                println!(env!("CARGO_PKG_VERSION"));
+                return;
+            },
+            _ => {},
+        }
+    }
+
     initialize_logger();
     let settings = Settings::load();
     let mut archiver = prepare_start(settings.archive_path.as_str());
