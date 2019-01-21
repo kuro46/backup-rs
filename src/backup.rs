@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -41,7 +42,18 @@ fn execute_path(path: &Path, root_path: &str, target_name: &str, archiver: &mut 
         return;
     }
 
-    for entry in fs::read_dir(path).unwrap() {
+    let entry_iterator = match fs::read_dir(path) {
+        Ok(iterator) => {
+            iterator
+        },
+        Err(error) => {
+            warn!("Cannot iterate entries in \"{}\". message: {}",
+                  path.to_str().unwrap(), error.description());
+            return;
+        },
+    };
+
+    for entry in entry_iterator {
         let entry = entry.unwrap();
         let entry_path_buf = entry.path();
 
