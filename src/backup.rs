@@ -11,22 +11,27 @@ pub fn start(settings: Settings, archiver: &mut Builder<File>) {
 
     let mut complete_count: u64 = 0;
     for target in settings.targets {
-        let target_name_string = target.name.clone();
-        let target_name = target_name_string.as_str();
+        let mut path_prefix = target.name.clone();
+        path_prefix.push('/');
+        let path_prefix = path_prefix.as_str();
 
-        info!("Current target: {}", target_name);
+        info!("Current target: {}", target.name.as_str());
 
         for path_str in target.paths {
             let path_str = path_str.as_str();
             info!("Current path: {}", path_str);
 
-            let path = Path::new(path_str);
-            execute_path(path, path.to_str().unwrap(), target_name, archiver, &mut || {
-                complete_count += 1;
-                if complete_count % 1000 == 0 {
-                    info!("{} files completed.", complete_count);
-                }
-            });
+            let path = Path::new(path_str).canonicalize().unwrap();
+            let path_str_length = path.to_str().unwrap().len();
+            execute_path(path_prefix,
+                         &path,
+                         path_str_length,
+                         archiver, &mut || {
+                    complete_count += 1;
+                    if complete_count % 1000 == 0 {
+                        info!("{} files completed.", complete_count);
+                    }
+                });
         }
     }
 
@@ -35,52 +40,58 @@ pub fn start(settings: Settings, archiver: &mut Builder<File>) {
     info!("Backup finished! ({} files)", complete_count);
 }
 
-fn execute_path(path: &Path, root_path: &str, target_name: &str, archiver: &mut Builder<File>, listener: &mut FnMut()) {
-    if !path.is_dir() {
-        execute_file(path.to_str().unwrap(),
-                     root_path,
-                     target_name,
+fn execute_path(path_prefix: &str,
+                entry_path: &Path,
+                root_path_len: usize,
+                archiver: &mut Builder<File>,
+                listener: &mut FnMut()) {
+    if !entry_path.is_dir() {
+        execute_file(path_prefix,
+                     entry_path,
+                     root_path_len,
                      archiver, listener);
         return;
     }
 
-    let entry_iterator = match fs::read_dir(path) {
+    let entry_iterator = match fs::read_dir(entry_path) {
         Ok(iterator) => {
             iterator
-        },
+        }
         Err(error) => {
             warn!("Cannot iterate entries in \"{}\". message: {}",
-                  path.to_str().unwrap(), error.description());
+                  entry_path.to_str().unwrap(), error.description());
             return;
-        },
+        }
     };
 
     for entry in entry_iterator {
-        let entry = entry.unwrap();
-        let entry_path_buf = entry.path();
-
-        execute_path(&entry_path_buf, root_path, target_name, archiver, listener);
+        execute_path(path_prefix,
+                     &entry.unwrap().path(),
+                     root_path_len,
+                     archiver,
+                     listener);
     }
 }
 
-fn execute_file(entry_path_string: &str,
-                root_path: &str,
-                target_name: &str,
+fn execute_file(path_prefix: &str,
+                entry_path: &Path,
+                root_path_len: usize,
                 archiver: &mut Builder<File>,
                 listener: &mut FnMut()) {
-    trace!("Archiving: {}", entry_path_string);
+    let entry_path_str = entry_path.to_str().unwrap();
+    trace!("Archiving: {}", entry_path_str);
 
-    let mut archive_path = target_name.to_string();
-    archive_path.push('/');
-    if entry_path_string.eq(root_path) {
-        archive_path.push_str(root_path);
+    let mut archive_path = path_prefix.to_string();
+    let entry_path_str_len = entry_path_str.len();
+    if entry_path_str_len == root_path_len {
+        archive_path.push_str(entry_path.file_name().unwrap().to_str().unwrap());
     } else {
-        archive_path.push_str(entry_path_string.to_string().replace(root_path, "").as_str());
+        archive_path.push_str(&entry_path_str[root_path_len..entry_path_str_len]);
     }
 
-    archiver.append_file(archive_path, &mut File::open(entry_path_string).unwrap()).unwrap();
+    archiver.append_file(archive_path, &mut File::open(entry_path).unwrap()).unwrap();
 
-    trace!("Archived: {}", entry_path_string);
+    trace!("Archived: {}", entry_path_str);
 
     listener();
 }
