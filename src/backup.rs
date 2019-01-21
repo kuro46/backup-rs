@@ -20,7 +20,7 @@ pub fn start(settings: Settings, archiver: &mut Builder<File>) {
             info!("Current path: {}", path_str);
 
             let path = Path::new(path_str);
-            execute_path(path,path.to_str().unwrap(),target_name,archiver,&mut||{
+            execute_path(path, path.to_str().unwrap(), target_name, archiver, &mut || {
                 complete_count += 1;
                 if complete_count % 1000 == 0 {
                     info!("{} files completed.", complete_count);
@@ -32,7 +32,7 @@ pub fn start(settings: Settings, archiver: &mut Builder<File>) {
     info!("Backup ended! ({} files)", complete_count);
 }
 
-fn execute_path(path: &Path, root_path: &str,target_name: &str, archiver:&mut Builder<File>,listener: &mut FnMut()){
+fn execute_path(path: &Path, root_path: &str, target_name: &str, archiver: &mut Builder<File>, listener: &mut FnMut()) {
     if !path.is_dir() {
         execute_file(path.to_str().unwrap(),
                      root_path,
@@ -45,22 +45,22 @@ fn execute_path(path: &Path, root_path: &str,target_name: &str, archiver:&mut Bu
         let entry = entry.unwrap();
         let entry_path_buf = entry.path();
 
-        execute_path(&entry_path_buf,root_path,target_name,archiver,listener);
+        execute_path(&entry_path_buf, root_path, target_name, archiver, listener);
     }
 }
 
 fn execute_file(entry_path_string: &str,
                 root_path: &str,
                 target_name: &str,
-                archiver:&mut Builder<File>,
-                listener: &mut FnMut()){
+                archiver: &mut Builder<File>,
+                listener: &mut FnMut()) {
     trace!("Archiving: {}", entry_path_string);
 
     let mut archive_path = target_name.to_string();
     archive_path.push('/');
     if entry_path_string.eq(root_path) {
         archive_path.push_str(root_path);
-    }else {
+    } else {
         archive_path.push_str(entry_path_string.to_string().replace(root_path, "").as_str());
     }
 
