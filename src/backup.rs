@@ -1,13 +1,12 @@
 use std::error::Error;
 use std::fs;
 use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 
 use tar::Builder;
 
 pub fn start(targets: Vec<Target>,
-             filters: Vec<Filter>,
+             _filters: Vec<Filter>,
              archiver: &mut Builder<File>) {
     info!("Backup started!");
 
