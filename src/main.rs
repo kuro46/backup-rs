@@ -36,10 +36,12 @@ fn main() {
     let targets: Vec<Target> = settings.targets.into_iter()
         .map(|setting| Target::from_setting(setting))
         .collect();
+    let targets = targets.as_slice();
     let filters: Vec<Filter> = settings.filters.unwrap_or_else(|| Vec::new())
         .into_iter()
         .map(|setting| Filter::from_setting(setting))
         .collect();
+    let filters = filters.as_slice();
     backup::start(targets,
                   filters,
                   &mut archiver);

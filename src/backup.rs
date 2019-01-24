@@ -6,13 +6,13 @@ use std::path::PathBuf;
 
 use tar::Builder;
 
-pub fn start(targets: Vec<Target>,
-             filters: Vec<Filter>,
+pub fn start(targets: &[Target],
+             filters: &[Filter],
              archiver: &mut Builder<File>) {
     info!("Backup started!");
 
     let mut complete_count: u64 = 0;
-    for target in &targets {
+    for target in targets {
         let filters_for_target: Vec<&Filter> = filters.iter()
             .filter(|filter| {
                 filter.scopes.contains(&target.name)
