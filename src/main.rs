@@ -32,12 +32,12 @@ fn main() {
     let mut archiver = prepare_start(settings.archive_path.as_str());
 
     let targets: Vec<Target> = settings.targets.into_iter()
-        .map(|setting| setting.to_target())
+        .map(|setting| setting.into_target())
         .collect();
     let targets = targets.as_slice();
     let filters: Vec<Filter> = settings.filters.unwrap_or_else(|| Vec::new())
         .into_iter()
-        .map(|setting| setting.to_filter())
+        .map(|setting| setting.into_filter())
         .collect();
     let filters = filters.as_slice();
     backup::start(targets,
@@ -85,7 +85,7 @@ struct FilterSetting {
 }
 
 impl FilterSetting {
-    fn to_filter(self) -> Filter {
+    fn into_filter(self) -> Filter {
         let targets: Vec<PathBuf> = self.targets.iter()
             .map(|path| Path::new(path).to_path_buf())
             .collect();
@@ -121,7 +121,7 @@ struct TargetSetting {
 }
 
 impl TargetSetting {
-    fn to_target(self) -> Target {
+    fn into_target(self) -> Target {
         let paths: Vec<PathBuf> = self.paths.iter()
             .map(|path| dunce::canonicalize(Path::new(path)).unwrap())
             .collect();
