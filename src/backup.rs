@@ -129,37 +129,9 @@ fn execute_file(path_prefix: &str,
     listener();
 }
 
-#[derive(Deserialize, Debug)]
-pub struct TargetSetting {
-    pub name: String,
-    pub paths: Vec<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct FilterSetting {
-    pub name: String,
-    pub execute: String,
-    pub scopes: Vec<String>,
-    pub targets: Vec<String>,
-    pub conditions: Vec<String>,
-}
-
 pub struct Target {
     pub name: String,
     pub paths: Vec<PathBuf>,
-}
-
-impl Target {
-    pub fn from_setting(setting: TargetSetting) -> Target {
-        let paths: Vec<PathBuf> = setting.paths.iter()
-            .map(|path| dunce::canonicalize(Path::new(path)).unwrap())
-            .collect();
-
-        Target {
-            name: setting.name,
-            paths,
-        }
-    }
 }
 
 pub struct Filter {
@@ -168,36 +140,6 @@ pub struct Filter {
     pub scopes: Vec<String>,
     pub targets: Vec<PathBuf>,
     pub conditions: Vec<Condition>,
-}
-
-impl Filter {
-    pub fn from_setting(setting: FilterSetting) -> Filter {
-        let targets: Vec<PathBuf> = setting.targets.iter()
-            .map(|path| Path::new(path).to_path_buf())
-            .collect();
-        let conditions: Vec<Condition> = setting.conditions.iter().map(|condition_str| {
-            let not = condition_str.starts_with('!');
-            let condition_str = if not {
-                condition_str.replacen("!", "", 1)
-            } else {
-                condition_str.to_string()
-            };
-            let path = Path::new(&condition_str).to_path_buf();
-
-            Condition {
-                not,
-                path,
-            }
-        }).collect();
-
-        Filter {
-            name: setting.name,
-            filter_type: FilterType::from_str(setting.execute.as_str()).unwrap(),
-            scopes: setting.scopes,
-            targets,
-            conditions,
-        }
-    }
 }
 
 pub struct Condition {
