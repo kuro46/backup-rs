@@ -21,10 +21,8 @@ pub fn start(targets: Vec<Target>,
             .collect();
         let filters_for_target = filters_for_target.as_slice();
 
-        let path_prefix = target.name.to_string();
-        let path_prefix = path_prefix.as_str();
-
-        info!("Current target: {}", target.name);
+        let path_prefix = target.name.as_str();
+        info!("Current target: {}", path_prefix);
 
         for path in &target.paths {
             info!("Current path: {}", path.to_str().unwrap());
