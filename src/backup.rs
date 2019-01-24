@@ -98,7 +98,7 @@ fn execute_path(path_prefix: &str,
     for entry in entry_iterator {
         execute_path(path_prefix,
                      filters,
-                     &dunce::canonicalize(entry.unwrap().path()).unwrap(),
+                     &entry.unwrap().path(),
                      root_path_len,
                      archiver,
                      listener);
