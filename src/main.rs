@@ -64,13 +64,13 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
         warn!("File: \"{}\" already exists!", file_path_str);
         warn!("overwrite it? (Y/N)");
         let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
+        io::stdin().read_line(&mut input).expect("Failed to read line!");
         if input.trim() != "y" {
             info!("Exiting...");
             std::process::exit(0);
         }
     }
-    let file = File::create(file_path_str).unwrap();
+    let file = File::create(file_path_str).expect("Failed to create archive file.");
 
     Builder::new(file)
 }
@@ -104,9 +104,11 @@ impl FilterSetting {
             }
         }).collect();
 
+        let execute = self.execute.as_str();
         Filter {
             name: self.name,
-            filter_type: FilterType::from_str(self.execute.as_str()).unwrap(),
+            filter_type: FilterType::from_str(execute)
+                .expect(format!("Filter type: {} not exists!", execute).as_str()),
             scopes: self.scopes,
             targets,
             conditions,
@@ -147,15 +149,15 @@ impl Settings {
         let settings_path = Path::new("./settings.toml");
         if !settings_path.exists() {
             warn!("Settings file not exists! creating it and exiting...");
-            File::create(settings_path).unwrap();
+            File::create(settings_path).expect("Failed to create settings.toml.");
             std::process::exit(1);
         }
-        let settings_file = File::open("settings.toml").unwrap();
+        let settings_file = File::open("settings.toml").expect("Failed to open settings.toml");
         let mut reader = BufReader::new(settings_file);
 
         let mut settings_buffer = String::new();
-        reader.read_to_string(&mut settings_buffer).unwrap();
-        let settings: Settings = toml::from_str(&settings_buffer.as_str()).unwrap();
+        reader.read_to_string(&mut settings_buffer).expect("Failed to read lines from settings.toml");
+        let settings: Settings = toml::from_str(&settings_buffer.as_str()).expect("Failed to deserialize settings.");
 
         debug!("Settings: {:?}", settings);
         info!("Settings loaded.");
