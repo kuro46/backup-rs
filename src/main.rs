@@ -35,7 +35,7 @@ fn main() {
         .map(|setting| setting.into_target())
         .collect();
     let targets = targets.as_slice();
-    let filters: Vec<Filter> = settings.filters.unwrap_or_else(|| Vec::new())
+    let filters: Vec<Filter> = settings.filters.unwrap_or_default()
         .into_iter()
         .map(|setting| setting.into_filter())
         .collect();
