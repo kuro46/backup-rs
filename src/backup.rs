@@ -52,19 +52,20 @@ fn execute_path(path_prefix: &str,
                 archiver: &mut Builder<File>,
                 listener: &mut FnMut()) {
     for filter in filters {
+        let entry_path_parent = entry_path.parent().unwrap().to_path_buf();
         for target in &filter.targets {
-            let mut target_appended = entry_path.parent().unwrap().to_path_buf();
+            let mut target_appended = entry_path_parent.clone();
             target_appended.push(target);
-            let target_appended = target_appended.as_path();
+            let target_appended = target_appended;
 
             if !target_appended.eq(entry_path) {
                 continue;
             }
 
             for condition in &filter.conditions {
-                let mut condition_path = entry_path.parent().unwrap().to_path_buf();
+                let mut condition_path = entry_path_parent.clone();
                 condition_path.push(&condition.path);
-                let condition_path = condition_path.as_path();
+                let condition_path = condition_path;
 
                 let found = condition_path.exists();
                 if (found && !condition.not) || (!found && condition.not) {
