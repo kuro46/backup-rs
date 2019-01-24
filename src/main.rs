@@ -6,24 +6,24 @@ extern crate serde_derive;
 use std::env;
 use std::fs::File;
 use std::io;
+use std::io::BufReader;
+use std::io::Read;
 use std::path::Path;
+use std::path::PathBuf;
 
 use chrono::Utc;
 use env_logger;
 use tar::Builder;
 
-use backup::Settings;
+use backup::{Condition, Filter, FilterType, Target};
 
 mod backup;
 
 fn main() {
     for arg in std::env::args() {
-        match arg.as_str() {
-            "--version" => {
-                println!(env!("CARGO_PKG_VERSION"));
-                return;
-            },
-            _ => {},
+        if let "--version" = arg.as_str() {
+            println!(env!("CARGO_PKG_VERSION"));
+            return;
         }
     }
 
@@ -31,7 +31,18 @@ fn main() {
     let settings = Settings::load();
     let mut archiver = prepare_start(settings.archive_path.as_str());
 
-    backup::start(settings, &mut archiver);
+    let targets: Vec<Target> = settings.targets.into_iter()
+        .map(|setting| setting.into_target())
+        .collect();
+    let targets = targets.as_slice();
+    let filters: Vec<Filter> = settings.filters.unwrap_or_default()
+        .into_iter()
+        .map(|setting| setting.into_filter())
+        .collect();
+    let filters = filters.as_slice();
+    backup::start(targets,
+                  filters,
+                  &mut archiver);
 }
 
 fn initialize_logger() {
@@ -64,4 +75,92 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
     Builder::new(file)
 }
 
+#[derive(Deserialize, Debug)]
+struct FilterSetting {
+    name: String,
+    execute: String,
+    scopes: Vec<String>,
+    targets: Vec<String>,
+    conditions: Vec<String>,
+}
+
+impl FilterSetting {
+    fn into_filter(self) -> Filter {
+        let targets: Vec<PathBuf> = self.targets.iter()
+            .map(|path| Path::new(path).to_path_buf())
+            .collect();
+        let conditions: Vec<Condition> = self.conditions.iter().map(|condition_str| {
+            let not = condition_str.starts_with('!');
+            let condition_str = if not {
+                condition_str.replacen("!", "", 1)
+            } else {
+                condition_str.to_string()
+            };
+            let path = Path::new(&condition_str).to_path_buf();
+
+            Condition {
+                not,
+                path,
+            }
+        }).collect();
+
+        Filter {
+            name: self.name,
+            filter_type: FilterType::from_str(self.execute.as_str()).unwrap(),
+            scopes: self.scopes,
+            targets,
+            conditions,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct TargetSetting {
+    name: String,
+    paths: Vec<String>,
+}
+
+impl TargetSetting {
+    fn into_target(self) -> Target {
+        let paths: Vec<PathBuf> = self.paths.iter()
+            .map(|path| dunce::canonicalize(Path::new(path)).unwrap())
+            .collect();
+
+        Target {
+            name: self.name,
+            paths,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct Settings {
+    archive_path: String,
+    targets: Vec<TargetSetting>,
+    filters: Option<Vec<FilterSetting>>,
+}
+
+impl Settings {
+    pub fn load() -> Settings {
+        info!("Loading settings...");
+
+        let settings_path = Path::new("./settings.toml");
+        if !settings_path.exists() {
+            warn!("Settings file not exists! creating it and exiting...");
+            File::create(settings_path).unwrap();
+            std::process::exit(1);
+        }
+        let settings_file = File::open("settings.toml").unwrap();
+        let mut reader = BufReader::new(settings_file);
+
+        let mut settings_buffer = String::new();
+        reader.read_to_string(&mut settings_buffer).unwrap();
+        let settings: Settings = toml::from_str(&settings_buffer.as_str()).unwrap();
+
+        debug!("Settings: {:?}", settings);
+        info!("Settings loaded.");
+
+        settings
+    }
+}
 

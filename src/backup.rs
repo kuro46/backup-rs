@@ -1,32 +1,42 @@
 use std::error::Error;
 use std::fs;
 use std::fs::File;
-use std::io::{BufReader, Read};
 use std::path::Path;
+use std::path::PathBuf;
 
 use tar::Builder;
 
-pub fn start(settings: Settings, archiver: &mut Builder<File>) {
+pub fn start(targets: &[Target],
+             filters: &[Filter],
+             archiver: &mut Builder<File>) {
     info!("Backup started!");
 
     let mut complete_count: u64 = 0;
-    for target in settings.targets {
-        let target_name_string = target.name.clone();
-        let target_name = target_name_string.as_str();
+    for target in targets {
+        let filters_for_target: Vec<&Filter> = filters.iter()
+            .filter(|filter| {
+                filter.scopes.contains(&target.name)
+                    || filter.scopes.contains(&"global".to_string())
+            })
+            .collect();
+        let filters_for_target = filters_for_target.as_slice();
 
-        info!("Current target: {}", target_name);
+        let path_prefix = target.name.as_str();
+        info!("Current target: {}", path_prefix);
 
-        for path_str in target.paths {
-            let path_str = path_str.as_str();
-            info!("Current path: {}", path_str);
-
-            let path = Path::new(path_str);
-            execute_path(path, path.to_str().unwrap(), target_name, archiver, &mut || {
-                complete_count += 1;
-                if complete_count % 1000 == 0 {
-                    info!("{} files completed.", complete_count);
-                }
-            });
+        for path in &target.paths {
+            info!("Current path: {}", path.to_str().unwrap());
+            let path_length = path.to_str().unwrap().len();
+            execute_path(path_prefix,
+                         filters_for_target,
+                         &path,
+                         path_length,
+                         archiver, &mut || {
+                    complete_count += 1;
+                    if complete_count % 1000 == 0 {
+                        info!("{} files completed.", complete_count);
+                    }
+                });
         }
     }
 
@@ -35,98 +45,120 @@ pub fn start(settings: Settings, archiver: &mut Builder<File>) {
     info!("Backup finished! ({} files)", complete_count);
 }
 
-fn execute_path(path: &Path, root_path: &str, target_name: &str, archiver: &mut Builder<File>, listener: &mut FnMut()) {
-    if !path.is_dir() {
-        execute_file(path.to_str().unwrap(),
-                     root_path,
-                     target_name,
+fn execute_path(path_prefix: &str,
+                filters: &[&Filter],
+                entry_path: &PathBuf,
+                root_path_len: usize,
+                archiver: &mut Builder<File>,
+                listener: &mut FnMut()) {
+    for filter in filters {
+        let entry_path_parent = entry_path.parent().unwrap().to_path_buf();
+        for target in &filter.targets {
+            let mut target_appended = entry_path_parent.clone();
+            target_appended.push(target);
+            let target_appended = target_appended;
+
+            if !target_appended.eq(entry_path) {
+                continue;
+            }
+
+            for condition in &filter.conditions {
+                let mut condition_path = entry_path_parent.clone();
+                condition_path.push(&condition.path);
+                let condition_path = condition_path;
+
+                let found = condition_path.exists();
+                if (found && !condition.not) || (!found && condition.not) {
+                    info!("Filter: {} applied to path: {}", filter.name, entry_path.to_str().unwrap());
+                    return;
+                }
+            }
+        }
+    }
+
+    if !entry_path.is_dir() {
+        execute_file(path_prefix,
+                     entry_path,
+                     root_path_len,
                      archiver, listener);
         return;
     }
 
-    let entry_iterator = match fs::read_dir(path) {
+    let entry_iterator = match fs::read_dir(entry_path) {
         Ok(iterator) => {
             iterator
-        },
+        }
         Err(error) => {
             warn!("Cannot iterate entries in \"{}\". message: {}",
-                  path.to_str().unwrap(), error.description());
+                  entry_path.to_str().unwrap(), error.description());
             return;
-        },
+        }
     };
 
     for entry in entry_iterator {
-        let entry = entry.unwrap();
-        let entry_path_buf = entry.path();
-
-        execute_path(&entry_path_buf, root_path, target_name, archiver, listener);
+        execute_path(path_prefix,
+                     filters,
+                     &entry.unwrap().path(),
+                     root_path_len,
+                     archiver,
+                     listener);
     }
 }
 
-fn execute_file(entry_path_string: &str,
-                root_path: &str,
-                target_name: &str,
+fn execute_file(path_prefix: &str,
+                entry_path: &Path,
+                root_path_len: usize,
                 archiver: &mut Builder<File>,
                 listener: &mut FnMut()) {
-    trace!("Archiving: {}", entry_path_string);
+    let entry_path_str = entry_path.to_str().unwrap();
+    trace!("Archiving: {}", entry_path_str);
 
-    let mut archive_path = target_name.to_string();
-    archive_path.push('/');
-    if entry_path_string.eq(root_path) {
-        archive_path.push_str(root_path);
+    let mut archive_path = path_prefix.to_string();
+    let entry_path_str_len = entry_path_str.len();
+    if entry_path_str_len == root_path_len {
+        archive_path.push('/');
+        archive_path.push_str(entry_path.file_name().unwrap().to_str().unwrap());
     } else {
-        archive_path.push_str(entry_path_string.to_string().replace(root_path, "").as_str());
+        archive_path.push_str(&entry_path_str[root_path_len..entry_path_str_len]);
     }
 
-    archiver.append_file(archive_path, &mut File::open(entry_path_string).unwrap()).unwrap();
+    archiver.append_file(archive_path, &mut File::open(entry_path).unwrap()).unwrap();
 
-    trace!("Archived: {}", entry_path_string);
+    trace!("Archived: {}", entry_path_str);
 
     listener();
 }
 
-#[derive(Deserialize, Debug)]
-pub struct Settings {
-    pub archive_path: String,
-    pub targets: Vec<Target>,
-    pub filters: Vec<Filter>,
-}
-
-impl Settings {
-    pub fn load() -> Settings {
-        info!("Loading settings...");
-
-        let settings_path = Path::new("./settings.toml");
-        if !settings_path.exists() {
-            warn!("Settings file not exists! creating it and exiting...");
-            File::create(settings_path).unwrap();
-            std::process::exit(1);
-        }
-        let settings_file = File::open("settings.toml").unwrap();
-        let mut reader = BufReader::new(settings_file);
-
-        let mut settings_buffer = String::new();
-        reader.read_to_string(&mut settings_buffer).unwrap();
-        let settings: Settings = toml::from_str(&settings_buffer.as_str()).unwrap();
-
-        debug!("Settings: {:?}", settings);
-        info!("Settings loaded.");
-
-        settings
-    }
-}
-
-#[derive(Deserialize, Debug)]
 pub struct Target {
     pub name: String,
-    pub paths: Vec<String>,
+    pub paths: Vec<PathBuf>,
 }
 
-#[derive(Deserialize, Debug)]
 pub struct Filter {
     pub name: String,
-    pub execute: String,
+    pub filter_type: FilterType,
     pub scopes: Vec<String>,
-    pub targets: Vec<String>,
-    pub conditions: Vec<String>,
+    pub targets: Vec<PathBuf>,
+    pub conditions: Vec<Condition>,
+}
+
+pub struct Condition {
+    pub not: bool,
+    pub path: PathBuf,
+}
+
+pub enum FilterType {
+    Exclude,
+//Implement in later
+//    Include,
+}
+
+impl FilterType {
+    pub fn from_str(type_str: &str) -> Option<FilterType> {
+        match type_str {
+            "exclude" => Some(FilterType::Exclude),
+//            "include" => Some(FilterType::Include),
+            _ => None
+        }
+    }
 }
