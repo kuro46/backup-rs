@@ -19,12 +19,6 @@ use backup::{Filter, FilterSetting, Target, TargetSetting};
 mod backup;
 
 fn main() {
-//    println!("{}","aaaaaaaaaa".to_string().replacen("a","",9));
-//    let mut path_buf = Path::new(r"C:\Users\shirokuro\Projects\Java\BanHelper\").canonicalize().unwrap();
-//    let mut path_buf = trim_unnecessary_prefix(&path_buf);
-//
-//    path_buf.push(r".\target\");
-//    println!("Existence of {} : {}",path_buf.to_str().unwrap(),path_buf.exists());
     for arg in std::env::args() {
         match arg.as_str() {
             "--version" => {
