@@ -25,8 +25,8 @@ pub fn start(targets: &[Target],
         info!("Current target: {}", path_prefix);
 
         for path in &target.paths {
-            info!("Current path: {}", path.to_str().unwrap());
-            let path_length = path.to_str().unwrap().len();
+            info!("Current path: {}", path.to_str().expect("Failed to got path"));
+            let path_length = path.to_str().expect("Failed to got path").len();
             execute_path(path_prefix,
                          filters_for_target,
                          &path,
@@ -41,7 +41,7 @@ pub fn start(targets: &[Target],
     }
 
     info!("Finishing...");
-    archiver.finish().unwrap();
+    archiver.finish().expect("Error occurred while finishing.");
     info!("Backup finished! ({} files)", complete_count);
 }
 
@@ -52,7 +52,7 @@ fn execute_path(path_prefix: &str,
                 archiver: &mut Builder<File>,
                 listener: &mut FnMut()) {
     for filter in filters {
-        let entry_path_parent = entry_path.parent().unwrap().to_path_buf();
+        let entry_path_parent = entry_path.parent().expect("Failed to get parent directory!").to_path_buf();
         for target in &filter.targets {
             let mut target_appended = entry_path_parent.clone();
             target_appended.push(target);
@@ -69,7 +69,7 @@ fn execute_path(path_prefix: &str,
 
                 let found = condition_path.exists();
                 if (found && !condition.not) || (!found && condition.not) {
-                    info!("Filter: {} applied to path: {}", filter.name, entry_path.to_str().unwrap());
+                    info!("Filter: {} applied to path: {}", filter.name, entry_path.to_str().expect("Failed to got path"));
                     return;
                 }
             }
@@ -90,7 +90,7 @@ fn execute_path(path_prefix: &str,
         }
         Err(error) => {
             warn!("Cannot iterate entries in \"{}\". message: {}",
-                  entry_path.to_str().unwrap(), error.description());
+                  entry_path.to_str().expect("Failed to got path"), error.description());
             return;
         }
     };
@@ -98,7 +98,7 @@ fn execute_path(path_prefix: &str,
     for entry in entry_iterator {
         execute_path(path_prefix,
                      filters,
-                     &entry.unwrap().path(),
+                     &entry.expect("Error occurred while iterating entry!").path(),
                      root_path_len,
                      archiver,
                      listener);
@@ -110,19 +110,19 @@ fn execute_file(path_prefix: &str,
                 root_path_len: usize,
                 archiver: &mut Builder<File>,
                 listener: &mut FnMut()) {
-    let entry_path_str = entry_path.to_str().unwrap();
+    let entry_path_str = entry_path.to_str().expect("Failed to got path");
     trace!("Archiving: {}", entry_path_str);
 
     let mut archive_path = path_prefix.to_string();
     let entry_path_str_len = entry_path_str.len();
     if entry_path_str_len == root_path_len {
         archive_path.push('/');
-        archive_path.push_str(entry_path.file_name().unwrap().to_str().unwrap());
+        archive_path.push_str(entry_path.file_name().expect("Failed to got file name").to_str().expect("Failed to convert OsStr to str"));
     } else {
         archive_path.push_str(&entry_path_str[root_path_len..entry_path_str_len]);
     }
 
-    archiver.append_file(archive_path, &mut File::open(entry_path).unwrap()).unwrap();
+    archiver.append_file(archive_path, &mut File::open(entry_path).expect("Failed to open file.")).unwrap();
 
     trace!("Archived: {}", entry_path_str);
 
