@@ -14,11 +14,17 @@ use chrono::Utc;
 use env_logger;
 use tar::Builder;
 
-use backup::{Filter, Target};
+use backup::{Filter, FilterSetting, Target, TargetSetting};
 
 mod backup;
 
 fn main() {
+//    println!("{}","aaaaaaaaaa".to_string().replacen("a","",9));
+//    let mut path_buf = Path::new(r"C:\Users\shirokuro\Projects\Java\BanHelper\").canonicalize().unwrap();
+//    let mut path_buf = trim_unnecessary_prefix(&path_buf);
+//
+//    path_buf.push(r".\target\");
+//    println!("Existence of {} : {}",path_buf.to_str().unwrap(),path_buf.exists());
     for arg in std::env::args() {
         match arg.as_str() {
             "--version" => {
@@ -33,8 +39,15 @@ fn main() {
     let settings = Settings::load();
     let mut archiver = prepare_start(settings.archive_path.as_str());
 
-    backup::start(settings.targets,
-                  settings.filters.unwrap_or_else(|| { Vec::new() }),
+    let targets: Vec<Target> = settings.targets.into_iter()
+        .map(|setting| Target::from_setting(setting))
+        .collect();
+    let filters: Vec<Filter> = settings.filters.unwrap_or_else(|| Vec::new())
+        .into_iter()
+        .map(|setting| Filter::from_setting(setting))
+        .collect();
+    backup::start(targets,
+                  filters,
                   &mut archiver);
 }
 
@@ -72,8 +85,8 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
 #[derive(Deserialize, Debug)]
 pub struct Settings {
     pub archive_path: String,
-    pub targets: Vec<Target>,
-    pub filters: Option<Vec<Filter>>,
+    pub targets: Vec<TargetSetting>,
+    pub filters: Option<Vec<FilterSetting>>,
 }
 
 impl Settings {
