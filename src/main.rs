@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io;
 use std::io::BufReader;
 use std::io::Read;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -28,6 +29,7 @@ fn main() {
     }
 
     initialize_logger();
+
     let settings = Settings::load();
     let mut archiver = prepare_start(settings.archive_path.as_str());
 
@@ -50,7 +52,26 @@ fn initialize_logger() {
     if env::var(log_level_env_key).is_err() {
         env::set_var(log_level_env_key, "INFO");
     }
-    env_logger::init();
+
+    env_logger::Builder::from_default_env().format(|formatter, record| {
+        use log::Level;
+        use colored::Colorize;
+
+        let level = record.level();
+        let level_string = format!("{}", level);
+        let level_str = level_string.as_str();
+        let level_str = match level {
+            Level::Debug | Level::Trace => level_str.bright_black(),
+            Level::Warn => level_str.yellow(),
+            Level::Error => level_str.bright_red(),
+            _ => colored::ColoredString::from(level_str)
+        };
+        //1: timestamp 2: level 3: body
+        writeln!(formatter, "[{} {}] {}",
+                 Local::now().format("%Y-%m-%d %H:%M:%S"),
+                 level_str,
+                 record.args())
+    }).init();
 
     debug!("Logger initialized.");
 }
