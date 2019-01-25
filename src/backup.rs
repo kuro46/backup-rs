@@ -4,12 +4,15 @@ use std::fs;
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 
 use tar::Builder;
 
 pub fn start(targets: &[Target],
              filters: &[Filter],
-             archiver: &mut Builder<File>) {
+             commands_after_backup: &[Vec<String>],
+             archiver: &mut Builder<File>,
+             archive_path: &str) {
     info!("Backup started!");
 
     let mut complete_count: u64 = 0;
@@ -44,6 +47,39 @@ pub fn start(targets: &[Target],
     info!("Finishing...");
     archiver.finish().expect("Error occurred while finishing.");
     info!("Backup finished! ({} files)", complete_count);
+
+    if commands_after_backup.is_empty() {
+        return;
+    }
+
+    info!("Executing commands...");
+
+    for command in commands_after_backup {
+        if command.is_empty() {
+            continue;
+        }
+
+        let mut args = command.iter();
+        let mut args_appended = String::new();
+        let first_arg = args.next().unwrap();
+        let mut command = Command::new(first_arg);
+        args_appended.push_str(first_arg);
+        for arg in args {
+            let arg = arg.replace("%archive_path%", archive_path);
+            let arg_str = arg.as_str();
+            command.arg(arg_str);
+            args_appended.push(' ');
+            args_appended.push_str(arg_str);
+        }
+
+        info!("Executing {}", args_appended);
+        let exit_status = command
+            .spawn()
+            .expect("failed to run command.")
+            .wait()
+            .expect("Execute failed!");
+        info!("Executed in exit code {}", exit_status.code().unwrap());
+    }
 }
 
 fn execute_path(path_prefix: &str,
