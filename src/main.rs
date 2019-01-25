@@ -11,7 +11,7 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
-use chrono::Utc;
+use chrono::Local;
 use env_logger;
 use tar::Builder;
 
@@ -58,7 +58,7 @@ fn initialize_logger() {
 fn prepare_start(archive_path: &str) -> Builder<File> {
     info!("Preparing to start...");
 
-    let file_path_str = Utc::now().format(archive_path).to_string();
+    let file_path_str = Local::now().format(archive_path).to_string();
     let file_path = Path::new(&file_path_str);
     if file_path.exists() {
         warn!("File: \"{}\" already exists!", file_path_str);
