@@ -33,10 +33,13 @@ fn main() {
     let mut archiver;
     let targets: Vec<Target>;
     let filters: Vec<Filter>;
+    let commands_after_backup: Vec<Vec<String>>;
+    let archive_path;
     //initialization
     {
         let settings = Settings::load();
-        archiver = prepare_start(settings.archive_path.as_str());
+        archive_path = Local::now().format(settings.archive_path.as_str()).to_string();
+        archiver = prepare_start(archive_path.as_str());
 
         targets = settings.targets.into_iter()
             .map(|setting| setting.into_target())
@@ -45,11 +48,14 @@ fn main() {
             .into_iter()
             .map(|setting| setting.into_filter())
             .collect();
+        commands_after_backup = settings.commands_after_backup.unwrap_or_default();
     }
 
     backup::start(targets.as_slice(),
                   filters.as_slice(),
-                  &mut archiver);
+                  commands_after_backup.as_slice(),
+                  &mut archiver,
+                  archive_path.as_str());
 }
 
 fn initialize_logger() {
@@ -84,10 +90,9 @@ fn initialize_logger() {
 fn prepare_start(archive_path: &str) -> Builder<File> {
     info!("Preparing to start...");
 
-    let file_path_str = Local::now().format(archive_path).to_string();
-    let file_path = Path::new(&file_path_str);
+    let file_path = Path::new(&archive_path);
     if file_path.exists() {
-        warn!("File: \"{}\" already exists!", file_path_str);
+        warn!("File: \"{}\" already exists!", archive_path);
         warn!("overwrite it? (Y/N)");
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("Failed to read line!");
@@ -96,7 +101,7 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
             std::process::exit(0);
         }
     }
-    let file = File::create(file_path_str).expect("Failed to create archive file.");
+    let file = File::create(archive_path).expect("Failed to create archive file.");
 
     Builder::new(file)
 }
@@ -166,6 +171,7 @@ struct Settings {
     archive_path: String,
     targets: Vec<TargetSetting>,
     filters: Option<Vec<FilterSetting>>,
+    commands_after_backup: Option<Vec<Vec<String>>>
 }
 
 impl Settings {
