@@ -129,7 +129,7 @@ impl FilterSetting {
         Filter {
             name: self.name,
             filter_type: FilterType::from_str(execute)
-                .expect(format!("Filter type: {} not exists!", execute).as_str()),
+                .unwrap_or_else(|| panic!("Filter type: {} not exists!", execute)),
             scopes: self.scopes,
             targets,
             conditions,
