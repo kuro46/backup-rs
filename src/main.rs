@@ -30,20 +30,25 @@ fn main() {
 
     initialize_logger();
 
-    let settings = Settings::load();
-    let mut archiver = prepare_start(settings.archive_path.as_str());
+    let mut archiver;
+    let targets: Vec<Target>;
+    let filters: Vec<Filter>;
+    //initialization
+    {
+        let settings = Settings::load();
+        archiver = prepare_start(settings.archive_path.as_str());
 
-    let targets: Vec<Target> = settings.targets.into_iter()
-        .map(|setting| setting.into_target())
-        .collect();
-    let targets = targets.as_slice();
-    let filters: Vec<Filter> = settings.filters.unwrap_or_default()
-        .into_iter()
-        .map(|setting| setting.into_filter())
-        .collect();
-    let filters = filters.as_slice();
-    backup::start(targets,
-                  filters,
+        targets = settings.targets.into_iter()
+            .map(|setting| setting.into_target())
+            .collect();
+        filters = settings.filters.unwrap_or_default()
+            .into_iter()
+            .map(|setting| setting.into_filter())
+            .collect();
+    }
+
+    backup::start(targets.as_slice(),
+                  filters.as_slice(),
                   &mut archiver);
 }
 
