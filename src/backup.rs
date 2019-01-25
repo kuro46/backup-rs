@@ -1,3 +1,4 @@
+use std;
 use std::error::Error;
 use std::fs;
 use std::fs::File;
@@ -77,10 +78,11 @@ fn execute_path(path_prefix: &str,
     }
 
     if !entry_path.is_dir() {
-        execute_file(path_prefix,
-                     entry_path,
-                     root_path_len,
-                     archiver, listener);
+        while execute_file(path_prefix,
+                           entry_path,
+                           root_path_len,
+                           archiver, listener) == Action::Retry {}
+
         return;
     }
 
@@ -109,7 +111,7 @@ fn execute_file(path_prefix: &str,
                 entry_path: &Path,
                 root_path_len: usize,
                 archiver: &mut Builder<File>,
-                listener: &mut FnMut()) {
+                listener: &mut FnMut()) -> Action {
     let entry_path_str = entry_path.to_str().expect("Failed to got path");
     trace!("Archiving: {}", entry_path_str);
 
@@ -122,11 +124,65 @@ fn execute_file(path_prefix: &str,
         archive_path.push_str(&entry_path_str[root_path_len..entry_path_str_len]);
     }
 
-    archiver.append_file(archive_path, &mut File::open(entry_path).expect("Failed to open file.")).unwrap();
+    let file = File::open(entry_path);
+    let file = unwrap_or_confirm(file,
+                                 || format!("Failed to open \"{}\"", entry_path_str));
+    let mut file = match file {
+        Ok(value) => {
+            value
+        },
+        Err(action) => {
+            return action;
+        },
+    };
+
+    let archive_result = archiver.append_file(archive_path, &mut file);
+    let archive_result = unwrap_or_confirm(archive_result,
+                                           || format!("Failed to archive \"{}\"", entry_path_str));
+    if let Err(action) = archive_result {
+        return action;
+    };
 
     trace!("Archived: {}", entry_path_str);
 
     listener();
+    Action::IgnoreOrContinue
+}
+
+fn unwrap_or_confirm<T, F>(result: std::io::Result<T>, error_message_func: F) -> Result<T, Action>
+    where F: FnOnce() -> String {
+    match result {
+        Ok(value) => {
+            Result::Ok(value)
+        },
+        Err(error) => {
+            warn!("{} : {}", error_message_func(), error);
+            warn!("(E)xit/(I)gnore/(R)etry");
+
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).expect("Failed to read line!");
+            match input.trim().to_uppercase().as_str() {
+                "I" => {
+                    info!("Ignoring...");
+                    Result::Err(Action::IgnoreOrContinue)
+                },
+                "R" => {
+                    info!("Retrying...");
+                    Result::Err(Action::Retry)
+                },
+                _ => {
+                    info!("Exiting...");
+                    std::process::exit(0);
+                },
+            }
+        }
+    }
+}
+
+#[derive(PartialEq)]
+enum Action {
+    Retry,
+    IgnoreOrContinue
 }
 
 pub struct Target {
