@@ -18,7 +18,7 @@ pub fn start(targets: &[Target],
              archive_path: &str) {
     info!("Backup started!");
 
-    let mut terminal = Term::buffered_stdout();
+    let mut terminal = Term::stdout();
     let mut complete_count: u64 = 0;
 
     for target in targets {
@@ -68,7 +68,6 @@ pub fn start(targets: &[Target],
         }
     }
     terminal.clear_line().unwrap();
-    terminal.flush().unwrap();
 
     info!("Finishing...");
     archiver.finish().expect("Error occurred while finishing.");
