@@ -67,8 +67,6 @@ pub fn start(targets: &[Target],
     }
     terminal.clear_line().unwrap();
 
-    info!("Finishing...");
-    archiver.finish().expect("Error occurred while finishing.");
     info!("Backup finished! ({} files)", complete_count);
 }
 
