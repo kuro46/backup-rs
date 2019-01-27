@@ -43,20 +43,18 @@ pub fn start(targets: &[Target],
                                                 target_name,
                                                 path);
 
-                    let terminal_width = terminal.size().1 as usize;
-                    if formatted.len() > terminal_width {
+                    //Trim or push space
+                    {
                         let mut formatted_chars = formatted.chars();
-
                         let mut trimmed = String::new();
-                        for _ in 0..terminal_width {
+                        for _ in 0..terminal.size().1 {
                             let next_char = formatted_chars.next();
                             if let Some(next_char) = next_char {
                                 trimmed.push(next_char);
                             } else {
-                                break;
+                                trimmed.push(' ');
                             }
                         }
-
                         formatted = trimmed;
                     }
 
