@@ -68,40 +68,6 @@ pub fn start(targets: &[Target],
     info!("Backup finished! ({} files)", complete_count);
 }
 
-pub fn execute_commands(commands: &[Vec<String>],
-                        archive_path: &str) {
-    info!("Executing commands...");
-
-    for command in commands {
-        if command.is_empty() {
-            continue;
-        }
-
-        let mut args = command.iter();
-        let mut args_appended = String::new();
-        let first_arg = args.next().unwrap();
-        let mut command = Command::new(first_arg);
-        args_appended.push_str(first_arg);
-        for arg in args {
-            let arg = arg.replace("%archive_path%", archive_path);
-            let arg_str = arg.as_str();
-            command.arg(arg_str);
-            args_appended.push(' ');
-            args_appended.push_str(arg_str);
-        }
-
-        info!("Executing {}", args_appended);
-        let exit_status = command
-            .spawn()
-            .expect("failed to run command.")
-            .wait()
-            .expect("Execute failed!");
-        info!("Executed in exit code {}", exit_status.code().unwrap());
-    }
-
-    info!("Commands were executed.");
-}
-
 fn execute_path<F>(path_prefix: &str,
                    filters: &[&Filter],
                    entry_path: &PathBuf,
@@ -233,6 +199,40 @@ fn unwrap_or_confirm<T, F>(result: std::io::Result<T>, error_message_func: F) ->
             }
         }
     }
+}
+
+pub fn execute_commands(commands: &[Vec<String>],
+                        archive_path: &str) {
+    info!("Executing commands...");
+
+    for command in commands {
+        if command.is_empty() {
+            continue;
+        }
+
+        let mut args = command.iter();
+        let mut args_appended = String::new();
+        let first_arg = args.next().unwrap();
+        let mut command = Command::new(first_arg);
+        args_appended.push_str(first_arg);
+        for arg in args {
+            let arg = arg.replace("%archive_path%", archive_path);
+            let arg_str = arg.as_str();
+            command.arg(arg_str);
+            args_appended.push(' ');
+            args_appended.push_str(arg_str);
+        }
+
+        info!("Executing {}", args_appended);
+        let exit_status = command
+            .spawn()
+            .expect("failed to run command.")
+            .wait()
+            .expect("Execute failed!");
+        info!("Executed in exit code {}", exit_status.code().unwrap());
+    }
+
+    info!("Commands were executed.");
 }
 
 #[derive(PartialEq)]
