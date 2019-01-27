@@ -228,7 +228,6 @@ pub struct Target {
 
 pub struct Filter {
     pub name: String,
-    pub filter_type: FilterType,
     pub scopes: Vec<String>,
     pub targets: Vec<PathBuf>,
     pub conditions: Vec<Condition>,
@@ -237,20 +236,4 @@ pub struct Filter {
 pub struct Condition {
     pub not: bool,
     pub path: PathBuf,
-}
-
-pub enum FilterType {
-    Exclude,
-//Implement in later
-//    Include,
-}
-
-impl FilterType {
-    pub fn from_str(type_str: &str) -> Option<FilterType> {
-        match type_str {
-            "exclude" => Some(FilterType::Exclude),
-//            "include" => Some(FilterType::Include),
-            _ => None
-        }
-    }
 }

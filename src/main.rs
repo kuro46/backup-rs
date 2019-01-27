@@ -16,7 +16,7 @@ use chrono::Local;
 use env_logger;
 use tar::Builder;
 
-use backup::{Condition, Filter, FilterType, Target};
+use backup::{Condition, Filter, Target};
 
 mod backup;
 
@@ -109,7 +109,6 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
 #[derive(Deserialize, Debug)]
 struct FilterSetting {
     name: String,
-    execute: String,
     scopes: Vec<String>,
     targets: Vec<String>,
     conditions: Vec<String>,
@@ -135,11 +134,8 @@ impl FilterSetting {
             }
         }).collect();
 
-        let execute = self.execute.as_str();
         Filter {
             name: self.name,
-            filter_type: FilterType::from_str(execute)
-                .unwrap_or_else(|| panic!("Filter type: {} not exists!", execute)),
             scopes: self.scopes,
             targets,
             conditions,
