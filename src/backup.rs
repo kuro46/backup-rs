@@ -83,27 +83,11 @@ fn execute_path<F>(path_prefix: &str,
                    archiver: &mut Builder<File>,
                    listener: &mut F) where F: FnMut(&String) {
     for filter in filters {
-        let entry_path_parent = entry_path.parent().expect("Failed to get parent directory!").to_path_buf();
-        for target in &filter.targets {
-            let mut target_appended = entry_path_parent.clone();
-            target_appended.push(target);
-            let target_appended = target_appended;
-
-            if !target_appended.eq(entry_path) {
-                continue;
-            }
-
-            for condition in &filter.conditions {
-                let mut condition_path = entry_path_parent.clone();
-                condition_path.push(&condition.path);
-                let condition_path = condition_path;
-
-                let found = condition_path.exists();
-                if (found && !condition.not) || (!found && condition.not) {
-                    info!("Filter: {} applied to path: {}", filter.name, entry_path.to_str().expect("Failed to got path"));
-                    return;
-                }
-            }
+        if is_filterable(filter, entry_path) {
+            info!("Filter: {} applied to path: {}",
+                  filter.name,
+                  entry_path.to_str().expect("Failed to got path"));
+            return;
         }
     }
 
@@ -135,6 +119,33 @@ fn execute_path<F>(path_prefix: &str,
                      archiver,
                      listener);
     }
+}
+
+fn is_filterable(filter: &Filter,
+                 path: &PathBuf) -> bool {
+    let entry_path_parent = path.parent().expect("Failed to get parent directory!").to_path_buf();
+    for target in &filter.targets {
+        let mut target_appended = entry_path_parent.clone();
+        target_appended.push(target);
+        let target_appended = target_appended;
+
+        if !target_appended.eq(path) {
+            continue;
+        }
+
+        for condition in &filter.conditions {
+            let mut condition_path = entry_path_parent.clone();
+            condition_path.push(&condition.path);
+            let condition_path = condition_path;
+
+            let found = condition_path.exists();
+            if (found && !condition.not) || (!found && condition.not) {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 fn execute_file<F>(path_prefix: &str,
