@@ -13,9 +13,7 @@ use tar::Builder;
 
 pub fn start(targets: &[Target],
              filters: &[Filter],
-             commands_after_backup: &[Vec<String>],
-             archiver: &mut Builder<File>,
-             archive_path: &str) {
+             archiver: &mut Builder<File>) {
     info!("Backup started!");
 
     let mut terminal = Term::stdout();
@@ -72,14 +70,13 @@ pub fn start(targets: &[Target],
     info!("Finishing...");
     archiver.finish().expect("Error occurred while finishing.");
     info!("Backup finished! ({} files)", complete_count);
+}
 
-    if commands_after_backup.is_empty() {
-        return;
-    }
-
+pub fn execute_commands(commands: &[Vec<String>],
+                        archive_path: &str) {
     info!("Executing commands...");
 
-    for command in commands_after_backup {
+    for command in commands {
         if command.is_empty() {
             continue;
         }

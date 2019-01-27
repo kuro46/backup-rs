@@ -53,9 +53,9 @@ fn main() {
 
     backup::start(targets.as_slice(),
                   filters.as_slice(),
-                  commands_after_backup.as_slice(),
-                  &mut archiver,
-                  archive_path.as_str());
+                  &mut archiver);
+    backup::execute_commands(&commands_after_backup.as_slice(),
+                             archive_path.as_str());
 }
 
 fn initialize_logger() {
