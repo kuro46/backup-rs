@@ -2,10 +2,13 @@ use std;
 use std::error::Error;
 use std::fs;
 use std::fs::File;
+use std::io::Result as IOResult;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
+use console::Term;
 use tar::Builder;
 
 pub fn start(targets: &[Target],
@@ -15,7 +18,9 @@ pub fn start(targets: &[Target],
              archive_path: &str) {
     info!("Backup started!");
 
+    let mut terminal = Term::buffered_stdout();
     let mut complete_count: u64 = 0;
+
     for target in targets {
         let filters_for_target: Vec<&Filter> = filters.iter()
             .filter(|filter| {
@@ -24,25 +29,46 @@ pub fn start(targets: &[Target],
             })
             .collect();
         let filters_for_target = filters_for_target.as_slice();
-
-        let path_prefix = target.name.as_str();
-        info!("Current target: {}", path_prefix);
+        let target_name = target.name.as_str();
 
         for path in &target.paths {
-            info!("Current path: {}", path.to_str().expect("Failed to got path"));
             let path_length = path.to_str().expect("Failed to got path").len();
-            execute_path(path_prefix,
+            execute_path(target_name,
                          filters_for_target,
                          &path,
                          path_length,
-                         archiver, &mut || {
+                         archiver, &mut |path| {
                     complete_count += 1;
-                    if complete_count % 1000 == 0 {
-                        info!("{} files completed.", complete_count);
+
+                    let mut formatted = format!("files: {} target: \"{}\" path: \"{}\"",
+                                                complete_count,
+                                                target_name,
+                                                path);
+
+                    let terminal_width = terminal.size().1 as usize;
+                    if formatted.len() > terminal_width {
+                        let mut formatted_chars = formatted.chars();
+
+                        let mut trimmed = String::new();
+                        for _ in 0..terminal_width {
+                            let next_char = formatted_chars.next();
+                            if let Some(next_char) = next_char {
+                                trimmed.push(next_char);
+                            } else {
+                                break;
+                            }
+                        }
+
+                        formatted = trimmed;
                     }
+
+                    formatted.push('\r');
+                    terminal.write_string(formatted.as_str()).unwrap();
                 });
         }
     }
+    terminal.clear_line().unwrap();
+    terminal.flush().unwrap();
 
     info!("Finishing...");
     archiver.finish().expect("Error occurred while finishing.");
@@ -82,12 +108,12 @@ pub fn start(targets: &[Target],
     }
 }
 
-fn execute_path(path_prefix: &str,
-                filters: &[&Filter],
-                entry_path: &PathBuf,
-                root_path_len: usize,
-                archiver: &mut Builder<File>,
-                listener: &mut FnMut()) {
+fn execute_path<F>(path_prefix: &str,
+                   filters: &[&Filter],
+                   entry_path: &PathBuf,
+                   root_path_len: usize,
+                   archiver: &mut Builder<File>,
+                   listener: &mut F) where F: FnMut(&String) {
     for filter in filters {
         let entry_path_parent = entry_path.parent().expect("Failed to get parent directory!").to_path_buf();
         for target in &filter.targets {
@@ -143,11 +169,11 @@ fn execute_path(path_prefix: &str,
     }
 }
 
-fn execute_file(path_prefix: &str,
-                entry_path: &Path,
-                root_path_len: usize,
-                archiver: &mut Builder<File>,
-                listener: &mut FnMut()) -> Action {
+fn execute_file<F>(path_prefix: &str,
+                   entry_path: &Path,
+                   root_path_len: usize,
+                   archiver: &mut Builder<File>,
+                   listener: &mut F) -> Action where F: FnMut(&String) {
     let entry_path_str = entry_path.to_str().expect("Failed to got path");
     trace!("Archiving: {}", entry_path_str);
 
@@ -172,7 +198,7 @@ fn execute_file(path_prefix: &str,
         },
     };
 
-    let archive_result = archiver.append_file(archive_path, &mut file);
+    let archive_result = archiver.append_file(&archive_path, &mut file);
     let archive_result = unwrap_or_confirm(archive_result,
                                            || format!("Failed to archive \"{}\"", entry_path_str));
     if let Err(action) = archive_result {
@@ -181,7 +207,7 @@ fn execute_file(path_prefix: &str,
 
     trace!("Archived: {}", entry_path_str);
 
-    listener();
+    listener(&archive_path);
     Action::IgnoreOrContinue
 }
 
@@ -236,4 +262,14 @@ pub struct Filter {
 pub struct Condition {
     pub not: bool,
     pub path: PathBuf,
+}
+
+trait WriteStr {
+    fn write_string(&mut self, string: &str) -> IOResult<usize>;
+}
+
+impl WriteStr for Term {
+    fn write_string(&mut self, string: &str) -> IOResult<usize> {
+        self.write(string.as_bytes())
+    }
 }
