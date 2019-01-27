@@ -22,13 +22,13 @@ pub fn start(targets: &[Target],
     for target in targets {
         let target_name = target.name.as_str();
 
-        let filters_for_target = get_filters(target_name, filters);
-        let filters_for_target = filters_for_target.as_slice();
+        let filters = get_filters(target_name, filters);
+        let filters = filters.as_slice();
 
         for path in &target.paths {
             let path_length = path.to_str().expect("Failed to got path").len();
             execute_path(target_name,
-                         filters_for_target,
+                         filters,
                          &path,
                          path_length,
                          archiver, &mut |path| {
