@@ -54,6 +54,10 @@ fn main() {
     backup::start(targets.as_slice(),
                   filters.as_slice(),
                   &mut archiver);
+    info!("Flushing archive...");
+    archiver.into_inner().expect("Failed to finish the archiver")
+        .flush().expect("Flush failed");
+    info!("Archive flushed.");
     backup::execute_commands(&commands_after_backup.as_slice(),
                              archive_path.as_str());
 }
