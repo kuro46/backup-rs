@@ -20,14 +20,10 @@ pub fn start(targets: &[Target],
     let mut complete_count: u64 = 0;
 
     for target in targets {
-        let filters_for_target: Vec<&Filter> = filters.iter()
-            .filter(|filter| {
-                filter.scopes.contains(&target.name)
-                    || filter.scopes.contains(&"global".to_string())
-            })
-            .collect();
-        let filters_for_target = filters_for_target.as_slice();
         let target_name = target.name.as_str();
+
+        let filters_for_target = get_filters(target_name, filters);
+        let filters_for_target = filters_for_target.as_slice();
 
         for path in &target.paths {
             let path_length = path.to_str().expect("Failed to got path").len();
@@ -66,6 +62,18 @@ pub fn start(targets: &[Target],
     terminal.clear_line().unwrap();
 
     info!("Backup finished! ({} files)", complete_count);
+}
+
+fn get_filters<'a>(target_name: &'a str,
+                   filters: &'a [Filter]) -> Vec<&'a Filter> {
+    let target_name = &target_name.to_string();
+    let global = &"global".to_string();
+    filters.iter()
+        .filter(|filter| {
+            filter.scopes.contains(target_name)
+                || filter.scopes.contains(global)
+        })
+        .collect()
 }
 
 fn execute_path<F>(path_prefix: &str,
