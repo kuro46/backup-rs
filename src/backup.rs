@@ -100,6 +100,8 @@ pub fn execute_commands(commands: &[Vec<String>],
             .expect("Execute failed!");
         info!("Executed in exit code {}", exit_status.code().unwrap());
     }
+
+    info!("Commands were executed.");
 }
 
 fn execute_path<F>(path_prefix: &str,
