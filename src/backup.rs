@@ -34,34 +34,44 @@ pub fn start(targets: &[Target],
                          archiver, &mut |path| {
                     complete_count += 1;
 
-                    let mut formatted = format!("files: {} target: \"{}\" path: \"{}\"",
-                                                complete_count,
-                                                target_name,
-                                                path);
-
-                    //Trim or push space
-                    {
-                        let mut formatted_chars = formatted.chars();
-                        let mut trimmed = String::new();
-                        for _ in 0..terminal.size().1 {
-                            let next_char = formatted_chars.next();
-                            if let Some(next_char) = next_char {
-                                trimmed.push(next_char);
-                            } else {
-                                trimmed.push(' ');
-                            }
-                        }
-                        formatted = trimmed;
-                    }
-
-                    formatted.push('\r');
-                    terminal.write_string(formatted.as_str()).unwrap();
+                    update_status_bar(&complete_count,
+                                      target_name,
+                                      &mut terminal,
+                                      path.as_str());
                 });
         }
     }
     terminal.clear_line().unwrap();
 
     info!("Backup finished! ({} files)", complete_count);
+}
+
+fn update_status_bar(file_count: &u64,
+                     target_name: &str,
+                     terminal: &mut Term,
+                     path: &str) {
+    let mut formatted = format!("files: {} target: \"{}\" path: \"{}\"",
+                                file_count,
+                                target_name,
+                                path);
+
+    //Trim or push space
+    {
+        let mut formatted_chars = formatted.chars();
+        let mut trimmed = String::new();
+        for _ in 0..terminal.size().1 {
+            let next_char = formatted_chars.next();
+            if let Some(next_char) = next_char {
+                trimmed.push(next_char);
+            } else {
+                trimmed.push(' ');
+            }
+        }
+        formatted = trimmed;
+    }
+
+    formatted.push('\r');
+    terminal.write_string(formatted.as_str()).unwrap();
 }
 
 fn get_filters<'a>(target_name: &'a str,
