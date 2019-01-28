@@ -165,7 +165,8 @@ fn execute_file<F>(path_prefix: &str,
     let entry_path_str_len = entry_path_str.len();
     if entry_path_str_len == root_path_len {
         archive_path.push('/');
-        archive_path.push_str(entry_path.file_name().expect("Failed to got file name").to_str().expect("Failed to convert OsStr to str"));
+        archive_path.push_str(entry_path.file_name().expect("Failed to got file name")
+            .to_str().expect("Failed to convert OsStr to str"));
     } else {
         archive_path.push_str(&entry_path_str[root_path_len..entry_path_str_len]);
     }
