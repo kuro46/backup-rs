@@ -69,10 +69,8 @@ fn get_filters<'a>(target_name: &'a str,
     let target_name = &target_name.to_string();
     let global = &"global".to_string();
     filters.iter()
-        .filter(|filter| {
-            filter.scopes.contains(target_name)
-                || filter.scopes.contains(global)
-        })
+        .filter(|filter|
+            filter.scopes.contains(target_name) || filter.scopes.contains(global))
         .collect()
 }
 
