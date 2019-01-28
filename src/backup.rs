@@ -195,8 +195,8 @@ fn execute_file<F>(path_prefix: &str,
     Action::IgnoreOrContinue
 }
 
-fn unwrap_or_confirm<T, F>(result: std::io::Result<T>, error_message_func: F) -> Result<T, Action>
-    where F: FnOnce() -> String {
+fn unwrap_or_confirm<T, F>(result: IOResult<T>,
+                           error_message_func: F) -> Result<T, Action> where F: FnOnce() -> String {
     match result {
         Ok(value) => {
             Result::Ok(value)
