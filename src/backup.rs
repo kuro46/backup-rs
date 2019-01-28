@@ -27,18 +27,27 @@ pub fn start(targets: &[Target],
 
         for path in &target.paths {
             let path_length = path.to_str().expect("Failed to got path").len();
-            execute_path(target_name,
-                         filters,
-                         &path,
-                         path_length,
-                         archiver, &mut |path| {
+
+            let mut on_file_detected = |path: &PathBuf| {
+                let mut on_archived = |path: &String| {
                     complete_count += 1;
 
                     update_status_bar(complete_count,
                                       target_name,
                                       &mut terminal,
                                       path.as_str());
-                });
+                };
+
+                while execute_file(target_name,
+                                   path,
+                                   path_length,
+                                   archiver,
+                                   &mut on_archived) == Action::Retry {};
+            };
+
+            execute_path(filters,
+                         &path,
+                         &mut on_file_detected);
         }
     }
     terminal.clear_line().unwrap();
@@ -84,12 +93,9 @@ fn get_filters<'a>(target_name: &'a str,
         .collect()
 }
 
-fn execute_path<F>(path_prefix: &str,
-                   filters: &[&Filter],
+fn execute_path<F>(filters: &[&Filter],
                    entry_path: &PathBuf,
-                   root_path_len: usize,
-                   archiver: &mut Builder<File>,
-                   listener: &mut F) where F: FnMut(&String) {
+                   on_file_detected: &mut F) where F: FnMut(&PathBuf) {
     for filter in filters {
         if is_filterable(filter, entry_path) {
             info!("Filter: {} applied to path: {}",
@@ -100,11 +106,7 @@ fn execute_path<F>(path_prefix: &str,
     }
 
     if !entry_path.is_dir() {
-        while execute_file(path_prefix,
-                           entry_path,
-                           root_path_len,
-                           archiver, listener) == Action::Retry {}
-
+        on_file_detected(entry_path);
         return;
     }
 
@@ -118,12 +120,9 @@ fn execute_path<F>(path_prefix: &str,
     };
 
     for entry in entry_iterator {
-        execute_path(path_prefix,
-                     filters,
+        execute_path(filters,
                      &entry.expect("Error occurred while iterating entry!").path(),
-                     root_path_len,
-                     archiver,
-                     listener);
+                     on_file_detected);
     }
 }
 
@@ -158,7 +157,7 @@ fn execute_file<F>(path_prefix: &str,
                    entry_path: &Path,
                    root_path_len: usize,
                    archiver: &mut Builder<File>,
-                   listener: &mut F) -> Action where F: FnMut(&String) {
+                   on_archived: &mut F) -> Action where F: FnMut(&String) {
     let entry_path_str = entry_path.to_str().expect("Failed to got path");
     trace!("Archiving: {}", entry_path_str);
 
@@ -192,7 +191,7 @@ fn execute_file<F>(path_prefix: &str,
 
     trace!("Archived: {}", entry_path_str);
 
-    listener(&archive_path);
+    on_archived(&archive_path);
     Action::IgnoreOrContinue
 }
 
