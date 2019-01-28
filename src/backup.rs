@@ -101,14 +101,12 @@ fn execute_path<F>(path_prefix: &str,
     }
 
     let entry_iterator = match fs::read_dir(entry_path) {
-        Ok(iterator) => {
-            iterator
-        }
+        Ok(iterator) => iterator,
         Err(error) => {
             warn!("Cannot iterate entries in \"{}\". message: {}",
                   entry_path.to_str().expect("Failed to got path"), error.description());
             return;
-        }
+        },
     };
 
     for entry in entry_iterator {
