@@ -59,7 +59,7 @@ fn update_status_bar(file_count: u64,
                      target_name: &str,
                      terminal: &mut Term,
                      path: &str) {
-    let mut formatted = format!("files: {} target: \"{}\" path: \"{}\"",
+    let mut formatted = format!(" files: {} target: \"{}\" path: \"{}\"",
                                 file_count,
                                 target_name,
                                 path);
