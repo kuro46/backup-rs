@@ -1,5 +1,4 @@
 use std;
-use std::error::Error;
 use std::fs;
 use std::fs::File;
 use std::io::Result as IOResult;
@@ -94,35 +93,36 @@ fn get_filters<'a>(target_name: &'a str,
 }
 
 fn execute_path<F>(filters: &[&Filter],
-                   entry_path: &PathBuf,
+                   path: &PathBuf,
                    on_file_detected: &mut F) where F: FnMut(&PathBuf) {
-    for filter in filters {
-        if is_filterable(filter, entry_path) {
-            info!("Filter: {} applied to path: {}",
-                  filter.name,
-                  entry_path.to_str().expect("Failed to got path"));
-            return;
+    let mut stack: Vec<PathBuf> = Vec::new();
+    stack.push(path.clone());
+
+    'outer: loop {
+        let path = match stack.pop() {
+            Some(path) => path,
+            None => return,
+        };
+
+        if path.is_dir() {
+            for path in fs::read_dir(&path).unwrap() {
+                let path = path.unwrap();
+                let path = path.path();
+
+                for filter in filters {
+                    if is_filterable(&filter, &path) {
+                        info!("Filter: {} applied to path: {}",
+                              filter.name,
+                              path.to_str().expect("Failed to got path"));
+                        continue 'outer;
+                    }
+                }
+
+                stack.push(path);
+            }
+        } else {
+            on_file_detected(&path);
         }
-    }
-
-    if !entry_path.is_dir() {
-        on_file_detected(entry_path);
-        return;
-    }
-
-    let entry_iterator = match fs::read_dir(entry_path) {
-        Ok(iterator) => iterator,
-        Err(error) => {
-            warn!("Cannot iterate entries in \"{}\". message: {}",
-                  entry_path.to_str().expect("Failed to got path"), error.description());
-            return;
-        },
-    };
-
-    for entry in entry_iterator {
-        execute_path(filters,
-                     &entry.expect("Error occurred while iterating entry!").path(),
-                     on_file_detected);
     }
 }
 
