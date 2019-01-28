@@ -34,7 +34,7 @@ pub fn start(targets: &[Target],
                          archiver, &mut |path| {
                     complete_count += 1;
 
-                    update_status_bar(&complete_count,
+                    update_status_bar(complete_count,
                                       target_name,
                                       &mut terminal,
                                       path.as_str());
@@ -46,7 +46,7 @@ pub fn start(targets: &[Target],
     info!("Backup finished! ({} files)", complete_count);
 }
 
-fn update_status_bar(file_count: &u64,
+fn update_status_bar(file_count: u64,
                      target_name: &str,
                      terminal: &mut Term,
                      path: &str) {
