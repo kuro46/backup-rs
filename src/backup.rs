@@ -16,6 +16,7 @@ pub fn start(targets: &[Target],
 
     let mut terminal = Term::stdout();
     let mut complete_count: u64 = 0;
+    let mut skip_count: u64 = 0;
 
     for target in targets {
         let target_name = target.name.as_str();
@@ -36,9 +37,10 @@ pub fn start(targets: &[Target],
 
                         for filter in filters {
                             if is_filterable(filter, &path) {
-                                info!("Filter: {} applied to path: {}",
-                                      filter.name,
-                                      path.to_str().expect("Failed to got path"));
+                                debug!("Filter: {} applied to path: {}",
+                                       filter.name,
+                                       path.to_str().expect("Failed to got path"));
+                                skip_count += 1;
                                 continue 'iterate_path;
                             }
                         }
@@ -53,6 +55,7 @@ pub fn start(targets: &[Target],
                              root_path_length,
                              archiver,
                              &mut complete_count,
+                             &mut skip_count,
                              &mut terminal);
             }
         }
@@ -67,6 +70,7 @@ fn execute_file(path: &Path,
                 root_path_length: usize,
                 archiver: &mut Builder<File>,
                 complete_count: &mut u64,
+                skip_count: &mut u64,
                 terminal: &mut Term) {
     let entry_path_str = path.to_str().expect("Failed to got path");
     trace!("Archiving: {}", entry_path_str);
@@ -96,6 +100,7 @@ fn execute_file(path: &Path,
                              root_path_length,
                              archiver,
                              complete_count,
+                             skip_count,
                              terminal);
                 return;
             }
@@ -114,6 +119,7 @@ fn execute_file(path: &Path,
                              root_path_length,
                              archiver,
                              complete_count,
+                             skip_count,
                              terminal);
                 return;
             }
@@ -125,17 +131,20 @@ fn execute_file(path: &Path,
     *complete_count += 1;
 
     update_status_bar(*complete_count,
+                      *skip_count,
                       target_name,
                       terminal,
                       path.to_str().unwrap());
 }
 
 fn update_status_bar(file_count: u64,
+                     skip_count: u64,
                      target_name: &str,
                      terminal: &mut Term,
                      path: &str) {
-    let mut formatted = format!(" files: {} target: \"{}\" path: \"{}\"",
+    let mut formatted = format!(" files: {} skips: {} target: \"{}\" path: \"{}\"",
                                 file_count,
+                                skip_count,
                                 target_name,
                                 path);
 
