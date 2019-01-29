@@ -37,9 +37,9 @@ pub fn start(targets: &[Target],
 
                         for filter in filters {
                             if is_filterable(filter, &path) {
-                                info!("Filter: {} applied to path: {}",
-                                      filter.name,
-                                      path.to_str().expect("Failed to got path"));
+                                debug!("Filter: {} applied to path: {}",
+                                       filter.name,
+                                       path.to_str().expect("Failed to got path"));
                                 skip_count += 1;
                                 continue 'iterate_path;
                             }
