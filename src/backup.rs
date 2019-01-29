@@ -91,7 +91,12 @@ fn execute_file(path: &Path,
             if action != Action::Retry {
                 return;
             } else {
-                execute_file(path, target_name, root_path_length, archiver, complete_count, terminal);
+                execute_file(path,
+                             target_name,
+                             root_path_length,
+                             archiver,
+                             complete_count,
+                             terminal);
                 return;
             }
         },
@@ -104,7 +109,12 @@ fn execute_file(path: &Path,
             if action != Action::Retry {
                 return;
             } else {
-                execute_file(path, target_name, root_path_length, archiver, complete_count, terminal);
+                execute_file(path,
+                             target_name,
+                             root_path_length,
+                             archiver,
+                             complete_count,
+                             terminal);
                 return;
             }
         }
@@ -160,7 +170,9 @@ fn get_filters<'a>(target_name: &'a str,
 
 fn is_filterable(filter: &Filter,
                  path: &PathBuf) -> bool {
-    let entry_path_parent = path.parent().expect("Failed to get parent directory!").to_path_buf();
+    let entry_path_parent = path.parent()
+        .expect("Failed to get parent directory!")
+        .to_path_buf();
     for target in &filter.targets {
         let mut target_appended = entry_path_parent.clone();
         target_appended.push(target);
