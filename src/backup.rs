@@ -1,11 +1,9 @@
 use std;
-use std::error::Error;
 use std::fs;
 use std::fs::File;
 use std::io::Result as IOResult;
 use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use console::Term;
@@ -26,33 +24,110 @@ pub fn start(targets: &[Target],
         let filters = filters.as_slice();
 
         for path in &target.paths {
-            let path_length = path.to_str().expect("Failed to got path").len();
+            let root_path_length = path.to_str().expect("Failed to got path").len();
 
-            let mut on_file_detected = |path: &PathBuf| {
-                let mut on_archived = |path: &String| {
-                    complete_count += 1;
+            let mut stack: Vec<PathBuf> = Vec::new();
+            stack.push(path.clone());
 
-                    update_status_bar(complete_count,
-                                      target_name,
-                                      &mut terminal,
-                                      path.as_str());
-                };
+            'iterate_path: while let Some(path) = stack.pop() {
+                if path.is_dir() {
+                    for path in fs::read_dir(&path).unwrap() {
+                        let path = path.unwrap().path();
 
-                while execute_file(target_name,
-                                   path,
-                                   path_length,
-                                   archiver,
-                                   &mut on_archived) == Action::Retry {};
-            };
+                        for filter in filters {
+                            if is_filterable(filter, &path) {
+                                info!("Filter: {} applied to path: {}",
+                                      filter.name,
+                                      path.to_str().expect("Failed to got path"));
+                                continue 'iterate_path;
+                            }
+                        }
 
-            execute_path(filters,
-                         &path,
-                         &mut on_file_detected);
+                        stack.push(path);
+                    }
+
+                    continue;
+                }
+
+                execute_file(&path, target_name,
+                             root_path_length,
+                             archiver,
+                             &mut complete_count,
+                             &mut terminal);
+            }
         }
     }
     terminal.clear_line().unwrap();
 
     info!("Backup finished! ({} files)", complete_count);
+}
+
+fn execute_file(path: &Path,
+                target_name: &str,
+                root_path_length: usize,
+                archiver: &mut Builder<File>,
+                complete_count: &mut u64,
+                terminal: &mut Term) {
+    let entry_path_str = path.to_str().expect("Failed to got path");
+    trace!("Archiving: {}", entry_path_str);
+
+    let mut archive_path = target_name.to_string();
+    let entry_path_str_len = entry_path_str.len();
+    if entry_path_str_len == root_path_length {
+        archive_path.push('/');
+        archive_path.push_str(path.file_name().expect("Failed to got file name")
+            .to_str().expect("Failed to convert OsStr to str"));
+    } else {
+        archive_path.push_str(&entry_path_str[root_path_length..entry_path_str_len]);
+    }
+
+    let file = unwrap_or_confirm(File::open(&path),
+                                 || format!("Failed to open \"{}\"", entry_path_str));
+    let mut file = match file {
+        Ok(value) => {
+            value
+        },
+        Err(action) => {
+            if action != Action::Retry {
+                return;
+            } else {
+                execute_file(path,
+                             target_name,
+                             root_path_length,
+                             archiver,
+                             complete_count,
+                             terminal);
+                return;
+            }
+        },
+    };
+
+    let archive_result = unwrap_or_confirm(archiver.append_file(&archive_path, &mut file),
+                                           || format!("Failed to archive \"{}\"", entry_path_str));
+    if let Err(action) = archive_result {
+        if action != Action::Retry {
+            if action != Action::Retry {
+                return;
+            } else {
+                execute_file(path,
+                             target_name,
+                             root_path_length,
+                             archiver,
+                             complete_count,
+                             terminal);
+                return;
+            }
+        }
+    };
+
+    trace!("Archived: {}", entry_path_str);
+
+    *complete_count += 1;
+
+    update_status_bar(*complete_count,
+                      target_name,
+                      terminal,
+                      path.to_str().unwrap());
 }
 
 fn update_status_bar(file_count: u64,
@@ -93,42 +168,11 @@ fn get_filters<'a>(target_name: &'a str,
         .collect()
 }
 
-fn execute_path<F>(filters: &[&Filter],
-                   entry_path: &PathBuf,
-                   on_file_detected: &mut F) where F: FnMut(&PathBuf) {
-    for filter in filters {
-        if is_filterable(filter, entry_path) {
-            info!("Filter: {} applied to path: {}",
-                  filter.name,
-                  entry_path.to_str().expect("Failed to got path"));
-            return;
-        }
-    }
-
-    if !entry_path.is_dir() {
-        on_file_detected(entry_path);
-        return;
-    }
-
-    let entry_iterator = match fs::read_dir(entry_path) {
-        Ok(iterator) => iterator,
-        Err(error) => {
-            warn!("Cannot iterate entries in \"{}\". message: {}",
-                  entry_path.to_str().expect("Failed to got path"), error.description());
-            return;
-        },
-    };
-
-    for entry in entry_iterator {
-        execute_path(filters,
-                     &entry.expect("Error occurred while iterating entry!").path(),
-                     on_file_detected);
-    }
-}
-
 fn is_filterable(filter: &Filter,
                  path: &PathBuf) -> bool {
-    let entry_path_parent = path.parent().expect("Failed to get parent directory!").to_path_buf();
+    let entry_path_parent = path.parent()
+        .expect("Failed to get parent directory!")
+        .to_path_buf();
     for target in &filter.targets {
         let mut target_appended = entry_path_parent.clone();
         target_appended.push(target);
@@ -151,49 +195,6 @@ fn is_filterable(filter: &Filter,
     }
 
     false
-}
-
-fn execute_file<F>(path_prefix: &str,
-                   entry_path: &Path,
-                   root_path_len: usize,
-                   archiver: &mut Builder<File>,
-                   on_archived: &mut F) -> Action where F: FnMut(&String) {
-    let entry_path_str = entry_path.to_str().expect("Failed to got path");
-    trace!("Archiving: {}", entry_path_str);
-
-    let mut archive_path = path_prefix.to_string();
-    let entry_path_str_len = entry_path_str.len();
-    if entry_path_str_len == root_path_len {
-        archive_path.push('/');
-        archive_path.push_str(entry_path.file_name().expect("Failed to got file name")
-            .to_str().expect("Failed to convert OsStr to str"));
-    } else {
-        archive_path.push_str(&entry_path_str[root_path_len..entry_path_str_len]);
-    }
-
-    let file = File::open(entry_path);
-    let file = unwrap_or_confirm(file,
-                                 || format!("Failed to open \"{}\"", entry_path_str));
-    let mut file = match file {
-        Ok(value) => {
-            value
-        },
-        Err(action) => {
-            return action;
-        },
-    };
-
-    let archive_result = archiver.append_file(&archive_path, &mut file);
-    let archive_result = unwrap_or_confirm(archive_result,
-                                           || format!("Failed to archive \"{}\"", entry_path_str));
-    if let Err(action) = archive_result {
-        return action;
-    };
-
-    trace!("Archived: {}", entry_path_str);
-
-    on_archived(&archive_path);
-    Action::IgnoreOrContinue
 }
 
 fn unwrap_or_confirm<T, F>(result: IOResult<T>,
