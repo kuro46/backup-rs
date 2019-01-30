@@ -57,6 +57,9 @@ pub fn start(targets: &[Target],
                              &mut terminal);
             }
         }
+
+        terminal.clear_line().unwrap();
+        terminal.write_line(&format!("Backed up target: {}", target_name)).unwrap();
     }
     terminal.clear_line().unwrap();
 
@@ -136,7 +139,7 @@ fn update_status_bar(file_count: u64,
                      target_name: &str,
                      terminal: &mut Term,
                      path: &str) {
-    let mut formatted = format!("completed: {} skipped: {}",
+    let mut formatted = format!("\rcompleted: {} skipped: {}",
                                 file_count,
                                 skip_count, );
 
@@ -155,7 +158,6 @@ fn update_status_bar(file_count: u64,
         formatted = trimmed;
     }
 
-    formatted.push('\r');
     terminal.write_string(formatted.as_str()).unwrap();
 }
 
