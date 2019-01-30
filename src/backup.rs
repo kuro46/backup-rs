@@ -129,16 +129,12 @@ fn execute_file(path: &Path,
 
     update_status_bar(*complete_count,
                       *skip_count,
-                      target_name,
-                      terminal,
-                      path.to_str().unwrap());
+                      terminal);
 }
 
 fn update_status_bar(file_count: u64,
                      skip_count: u64,
-                     target_name: &str,
-                     terminal: &mut Term,
-                     path: &str) {
+                     terminal: &mut Term) {
     let mut formatted = format!("\rcompleted: {} skipped: {}",
                                 file_count,
                                 skip_count, );
