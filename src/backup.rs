@@ -136,11 +136,9 @@ fn update_status_bar(file_count: u64,
                      target_name: &str,
                      terminal: &mut Term,
                      path: &str) {
-    let mut formatted = format!(" files: {} skips: {} target: \"{}\" path: \"{}\"",
+    let mut formatted = format!("completed: {} skipped: {}",
                                 file_count,
-                                skip_count,
-                                target_name,
-                                path);
+                                skip_count, );
 
     //Trim or push space
     {
