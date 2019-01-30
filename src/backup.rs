@@ -12,8 +12,6 @@ use tar::Builder;
 pub fn start(targets: &[Target],
              filters: &[Filter],
              archiver: &mut Builder<File>) {
-    info!("Backup started!");
-
     let mut terminal = Term::stdout();
     let mut complete_count: u64 = 0;
     let mut skip_count: u64 = 0;
@@ -62,7 +60,7 @@ pub fn start(targets: &[Target],
     }
     terminal.clear_line().unwrap();
 
-    info!("Backup finished! ({} files)", complete_count);
+    println!("Backup finished! ({} files)", complete_count);
 }
 
 fn execute_file(path: &Path,
@@ -73,8 +71,6 @@ fn execute_file(path: &Path,
                 skip_count: &mut u64,
                 terminal: &mut Term) {
     let entry_path_str = path.to_str().expect("Failed to got path");
-    trace!("Archiving: {}", entry_path_str);
-
     let mut archive_path = target_name.to_string();
     let entry_path_str_len = entry_path_str.len();
     if entry_path_str_len == root_path_length {
@@ -125,8 +121,6 @@ fn execute_file(path: &Path,
             }
         }
     };
-
-    trace!("Archived: {}", entry_path_str);
 
     *complete_count += 1;
 
@@ -213,22 +207,22 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
             Result::Ok(value)
         },
         Err(error) => {
-            warn!("{} : {}", error_message_func(), error);
-            warn!("(E)xit/(I)gnore/(R)etry");
+            println!("{} : {}", error_message_func(), error);
+            println!("(E)xit/(I)gnore/(R)etry");
 
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).expect("Failed to read line!");
             match input.trim().to_uppercase().as_str() {
                 "I" => {
-                    info!("Ignoring...");
+                    println!("Ignoring...");
                     Result::Err(Action::IgnoreOrContinue)
                 },
                 "R" => {
-                    info!("Retrying...");
+                    println!("Retrying...");
                     Result::Err(Action::Retry)
                 },
                 _ => {
-                    info!("Exiting...");
+                    println!("Exiting...");
                     std::process::exit(0);
                 },
             }
@@ -238,8 +232,6 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
 
 pub fn execute_commands(commands: &[Vec<String>],
                         archive_path: &str) {
-    info!("Executing commands...");
-
     for command in commands {
         if command.is_empty() {
             continue;
@@ -258,16 +250,13 @@ pub fn execute_commands(commands: &[Vec<String>],
             args_appended.push_str(arg_str);
         }
 
-        info!("Executing {}", args_appended);
         let exit_status = command
             .spawn()
             .expect("failed to run command.")
             .wait()
             .expect("Execute failed!");
-        info!("Executed in exit code {}", exit_status.code().unwrap());
+        println!("Executed in exit code {}", exit_status.code().unwrap());
     }
-
-    info!("Commands were executed.");
 }
 
 #[derive(PartialEq)]
