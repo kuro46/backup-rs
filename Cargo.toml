@@ -15,6 +15,3 @@ serde_derive = "1"
 dunce = "0.1"
 colored = "1"
 console = "0.7"
-# This repository supports windows
-# Waiting this: https://gitlab.redox-os.org/redox-os/termion/merge_requests/151
-termion = {git = "https://gitlab.redox-os.org/Jezza/termion",branch = "windows-support"}

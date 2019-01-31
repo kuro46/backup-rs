@@ -15,7 +15,6 @@ use std::path::PathBuf;
 use chrono::Local;
 use env_logger;
 use tar::Builder;
-use termion::input::TermRead;
 
 use backup::{Condition, Filter, Target};
 
