@@ -99,8 +99,8 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
             let stdout = std::io::stdout();
             let mut stdout = stdout.lock();
 
-            stdout.write_all(b"Overwrite it? (Y/N)");
-            stdout.flush();
+            stdout.write_all(b"Overwrite it? (Y/N)").unwrap();
+            stdout.flush().unwrap();
         }
 
         let mut input = String::new();
