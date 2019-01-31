@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use chrono::Local;
 use env_logger;
 use tar::Builder;
+use termion::input::TermRead;
 
 use backup::{Condition, Filter, Target};
 
@@ -93,7 +94,16 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
     let file_path = Path::new(&archive_path);
     if file_path.exists() {
         println!("File: \"{}\" already exists!", archive_path);
-        println!("overwrite it? (Y/N)");
+
+        //Lock and unlock stdout
+        {
+            let stdout = std::io::stdout();
+            let mut stdout = stdout.lock();
+
+            stdout.write_all(b"Overwrite it? (Y/N)");
+            stdout.flush();
+        }
+
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("Failed to read line!");
         if input.trim() != "y" {
