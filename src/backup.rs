@@ -204,7 +204,15 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
         },
         Err(error) => {
             println!("{} : {}", error_message_func(), error);
-            println!("(E)xit/(I)gnore/(R)etry");
+
+            //Lock and unlock stdout
+            {
+                let stdout = std::io::stdout();
+                let mut stdout = stdout.lock();
+
+                stdout.write_all(b"[(E)xit/(I)gnore/(R)etry] ").unwrap();
+                stdout.flush().unwrap();
+            }
 
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).expect("Failed to read line!");
