@@ -105,7 +105,7 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
 
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("Failed to read line!");
-        if input.trim() != "y" {
+        if input.trim() != "o" {
             println!("Exiting...");
             std::process::exit(0);
         }
