@@ -99,7 +99,7 @@ fn prepare_start(archive_path: &str) -> Builder<File> {
             let stdout = std::io::stdout();
             let mut stdout = stdout.lock();
 
-            stdout.write_all(b"Overwrite it? (Y/N)").unwrap();
+            stdout.write_all(b"(O)verwirte, (E)xit: ").unwrap();
             stdout.flush().unwrap();
         }
 

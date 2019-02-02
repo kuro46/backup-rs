@@ -164,7 +164,7 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
                 let stdout = std::io::stdout();
                 let mut stdout = stdout.lock();
 
-                stdout.write_all(b"[(E)xit/(I)gnore/(R)etry] ").unwrap();
+                stdout.write_all(b"(E)xit, (I)gnore, (R)etry: ").unwrap();
                 stdout.flush().unwrap();
             }
 
