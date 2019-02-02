@@ -170,12 +170,12 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
 
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).expect("Failed to read line!");
-            match input.trim().to_uppercase().as_str() {
-                "I" => {
+            match input.trim().to_ascii_lowercase().as_str() {
+                "i" => {
                     println!("Ignoring...");
                     Result::Err(Action::IgnoreOrContinue)
                 },
-                "R" => {
+                "r" => {
                     println!("Retrying...");
                     Result::Err(Action::Retry)
                 },
