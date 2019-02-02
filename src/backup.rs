@@ -6,28 +6,34 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use console::Term;
 use tar::Builder;
 
 pub fn start(targets: &[Target],
              filters: &[Filter],
              archiver: &mut Builder<File>) {
-    let mut terminal = Term::stdout();
-    let mut complete_count: u64 = 0;
-    let mut skip_count: u64 = 0;
-
     for target in targets {
         let target_name = target.name.as_str();
 
         let filters = get_filters(target_name, filters);
         let filters = filters.as_slice();
 
+        print!(
+            "Backing up target: {}\nFilters for filtering:",
+            target_name);
+        if filters.is_empty() {
+            println!(" NONE");
+        } else {
+            println!();
+            for filter in filters {
+                println!("\t- {}", &filter.name);
+            }
+        }
+
         for path in &target.paths {
             let root_path_length = path.to_str().expect("Failed to got path").len();
 
             let mut stack: Vec<PathBuf> = Vec::new();
             stack.push(path.clone());
-
             'iterate_path: while let Some(path) = stack.pop() {
                 if path.is_dir() {
                     for path in fs::read_dir(&path).unwrap() {
@@ -35,44 +41,29 @@ pub fn start(targets: &[Target],
 
                         for filter in filters {
                             if is_filterable(filter, &path) {
-                                debug!("Filter: {} applied to path: {}",
-                                       filter.name,
-                                       path.to_str().expect("Failed to got path"));
-                                skip_count += 1;
                                 continue 'iterate_path;
                             }
                         }
 
                         stack.push(path);
                     }
-
                     continue;
                 }
 
                 execute_file(&path, target_name,
                              root_path_length,
-                             archiver,
-                             &mut complete_count,
-                             &mut skip_count,
-                             &mut terminal);
+                             archiver);
             }
         }
-
-        terminal.clear_line().unwrap();
-        terminal.write_line(&format!("Backed up target: {}", target_name)).unwrap();
     }
-    terminal.clear_line().unwrap();
 
-    println!("Backup finished! ({} files)", complete_count);
+    println!("Backup finished!");
 }
 
 fn execute_file(path: &Path,
                 target_name: &str,
                 root_path_length: usize,
-                archiver: &mut Builder<File>,
-                complete_count: &mut u64,
-                skip_count: &mut u64,
-                terminal: &mut Term) {
+                archiver: &mut Builder<File>) {
     let entry_path_str = path.to_str().expect("Failed to got path");
     let mut archive_path = target_name.to_string();
     let entry_path_str_len = entry_path_str.len();
@@ -97,10 +88,7 @@ fn execute_file(path: &Path,
                 execute_file(path,
                              target_name,
                              root_path_length,
-                             archiver,
-                             complete_count,
-                             skip_count,
-                             terminal);
+                             archiver);
                 return;
             }
         },
@@ -116,45 +104,11 @@ fn execute_file(path: &Path,
                 execute_file(path,
                              target_name,
                              root_path_length,
-                             archiver,
-                             complete_count,
-                             skip_count,
-                             terminal);
+                             archiver);
                 return;
             }
         }
     };
-
-    *complete_count += 1;
-
-    update_status_bar(*complete_count,
-                      *skip_count,
-                      terminal);
-}
-
-fn update_status_bar(file_count: u64,
-                     skip_count: u64,
-                     terminal: &mut Term) {
-    let mut formatted = format!("\rcompleted: {} skipped: {}",
-                                file_count,
-                                skip_count, );
-
-    //Trim or push space
-    {
-        let mut formatted_chars = formatted.chars();
-        let mut trimmed = String::new();
-        for _ in 0..terminal.size().1 {
-            let next_char = formatted_chars.next();
-            if let Some(next_char) = next_char {
-                trimmed.push(next_char);
-            } else {
-                trimmed.push(' ');
-            }
-        }
-        formatted = trimmed;
-    }
-
-    terminal.write_string(formatted.as_str()).unwrap();
 }
 
 fn get_filters<'a>(target_name: &'a str,
@@ -284,14 +238,4 @@ pub struct Filter {
 pub struct Condition {
     pub not: bool,
     pub path: PathBuf,
-}
-
-trait WriteStr {
-    fn write_string(&mut self, string: &str) -> IOResult<usize>;
-}
-
-impl WriteStr for Term {
-    fn write_string(&mut self, string: &str) -> IOResult<usize> {
-        self.write(string.as_bytes())
-    }
 }
