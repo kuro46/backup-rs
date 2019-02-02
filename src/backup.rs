@@ -6,30 +6,34 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use console::Term;
 use tar::Builder;
 
 pub fn start(targets: &[Target],
              filters: &[Filter],
              archiver: &mut Builder<File>) {
-    info!("Backup started!");
-
-    let mut terminal = Term::stdout();
-    let mut complete_count: u64 = 0;
-    let mut skip_count: u64 = 0;
-
     for target in targets {
         let target_name = target.name.as_str();
 
         let filters = get_filters(target_name, filters);
         let filters = filters.as_slice();
 
+        print!(
+            "Backing up target: {}\nFilters for filtering:",
+            target_name);
+        if filters.is_empty() {
+            println!(" NONE");
+        } else {
+            println!();
+            for filter in filters {
+                println!("\t- {}", &filter.name);
+            }
+        }
+
         for path in &target.paths {
             let root_path_length = path.to_str().expect("Failed to got path").len();
 
             let mut stack: Vec<PathBuf> = Vec::new();
             stack.push(path.clone());
-
             'iterate_path: while let Some(path) = stack.pop() {
                 if path.is_dir() {
                     for path in fs::read_dir(&path).unwrap() {
@@ -37,44 +41,30 @@ pub fn start(targets: &[Target],
 
                         for filter in filters {
                             if is_filterable(filter, &path) {
-                                debug!("Filter: {} applied to path: {}",
-                                       filter.name,
-                                       path.to_str().expect("Failed to got path"));
-                                skip_count += 1;
                                 continue 'iterate_path;
                             }
                         }
 
                         stack.push(path);
                     }
-
                     continue;
                 }
 
                 execute_file(&path, target_name,
                              root_path_length,
-                             archiver,
-                             &mut complete_count,
-                             &mut skip_count,
-                             &mut terminal);
+                             archiver);
             }
         }
     }
-    terminal.clear_line().unwrap();
 
-    info!("Backup finished! ({} files)", complete_count);
+    println!("Backup finished!");
 }
 
 fn execute_file(path: &Path,
                 target_name: &str,
                 root_path_length: usize,
-                archiver: &mut Builder<File>,
-                complete_count: &mut u64,
-                skip_count: &mut u64,
-                terminal: &mut Term) {
+                archiver: &mut Builder<File>) {
     let entry_path_str = path.to_str().expect("Failed to got path");
-    trace!("Archiving: {}", entry_path_str);
-
     let mut archive_path = target_name.to_string();
     let entry_path_str_len = entry_path_str.len();
     if entry_path_str_len == root_path_length {
@@ -98,10 +88,7 @@ fn execute_file(path: &Path,
                 execute_file(path,
                              target_name,
                              root_path_length,
-                             archiver,
-                             complete_count,
-                             skip_count,
-                             terminal);
+                             archiver);
                 return;
             }
         },
@@ -117,54 +104,11 @@ fn execute_file(path: &Path,
                 execute_file(path,
                              target_name,
                              root_path_length,
-                             archiver,
-                             complete_count,
-                             skip_count,
-                             terminal);
+                             archiver);
                 return;
             }
         }
     };
-
-    trace!("Archived: {}", entry_path_str);
-
-    *complete_count += 1;
-
-    update_status_bar(*complete_count,
-                      *skip_count,
-                      target_name,
-                      terminal,
-                      path.to_str().unwrap());
-}
-
-fn update_status_bar(file_count: u64,
-                     skip_count: u64,
-                     target_name: &str,
-                     terminal: &mut Term,
-                     path: &str) {
-    let mut formatted = format!(" files: {} skips: {} target: \"{}\" path: \"{}\"",
-                                file_count,
-                                skip_count,
-                                target_name,
-                                path);
-
-    //Trim or push space
-    {
-        let mut formatted_chars = formatted.chars();
-        let mut trimmed = String::new();
-        for _ in 0..terminal.size().1 {
-            let next_char = formatted_chars.next();
-            if let Some(next_char) = next_char {
-                trimmed.push(next_char);
-            } else {
-                trimmed.push(' ');
-            }
-        }
-        formatted = trimmed;
-    }
-
-    formatted.push('\r');
-    terminal.write_string(formatted.as_str()).unwrap();
 }
 
 fn get_filters<'a>(target_name: &'a str,
@@ -213,22 +157,30 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
             Result::Ok(value)
         },
         Err(error) => {
-            warn!("{} : {}", error_message_func(), error);
-            warn!("(E)xit/(I)gnore/(R)etry");
+            println!("{} : {}", error_message_func(), error);
+
+            //Lock and unlock stdout
+            {
+                let stdout = std::io::stdout();
+                let mut stdout = stdout.lock();
+
+                stdout.write_all(b"(E)xit, (I)gnore, (R)etry: ").unwrap();
+                stdout.flush().unwrap();
+            }
 
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).expect("Failed to read line!");
-            match input.trim().to_uppercase().as_str() {
-                "I" => {
-                    info!("Ignoring...");
+            match input.trim().to_ascii_lowercase().as_str() {
+                "i" => {
+                    println!("Ignoring...");
                     Result::Err(Action::IgnoreOrContinue)
                 },
-                "R" => {
-                    info!("Retrying...");
+                "r" => {
+                    println!("Retrying...");
                     Result::Err(Action::Retry)
                 },
                 _ => {
-                    info!("Exiting...");
+                    println!("Exiting...");
                     std::process::exit(0);
                 },
             }
@@ -238,8 +190,6 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
 
 pub fn execute_commands(commands: &[Vec<String>],
                         archive_path: &str) {
-    info!("Executing commands...");
-
     for command in commands {
         if command.is_empty() {
             continue;
@@ -258,16 +208,13 @@ pub fn execute_commands(commands: &[Vec<String>],
             args_appended.push_str(arg_str);
         }
 
-        info!("Executing {}", args_appended);
         let exit_status = command
             .spawn()
             .expect("failed to run command.")
             .wait()
             .expect("Execute failed!");
-        info!("Executed in exit code {}", exit_status.code().unwrap());
+        println!("Executed in exit code {}", exit_status.code().unwrap());
     }
-
-    info!("Commands were executed.");
 }
 
 #[derive(PartialEq)]
@@ -291,14 +238,4 @@ pub struct Filter {
 pub struct Condition {
     pub not: bool,
     pub path: PathBuf,
-}
-
-trait WriteStr {
-    fn write_string(&mut self, string: &str) -> IOResult<usize>;
-}
-
-impl WriteStr for Term {
-    fn write_string(&mut self, string: &str) -> IOResult<usize> {
-        self.write(string.as_bytes())
-    }
 }

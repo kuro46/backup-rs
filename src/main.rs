@@ -54,10 +54,8 @@ fn main() {
     backup::start(targets.as_slice(),
                   filters.as_slice(),
                   &mut archiver);
-    info!("Flushing archive...");
     archiver.into_inner().expect("Failed to finish the archiver")
         .flush().expect("Flush failed");
-    info!("Archive flushed.");
     backup::execute_commands(&commands_after_backup.as_slice(),
                              archive_path.as_str());
 }
@@ -92,16 +90,23 @@ fn initialize_logger() {
 }
 
 fn prepare_start(archive_path: &str) -> Builder<File> {
-    info!("Preparing to start...");
-
     let file_path = Path::new(&archive_path);
     if file_path.exists() {
-        warn!("File: \"{}\" already exists!", archive_path);
-        warn!("overwrite it? (Y/N)");
+        println!("File: \"{}\" already exists!", archive_path);
+
+        //Lock and unlock stdout
+        {
+            let stdout = std::io::stdout();
+            let mut stdout = stdout.lock();
+
+            stdout.write_all(b"(O)verwirte, (E)xit: ").unwrap();
+            stdout.flush().unwrap();
+        }
+
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("Failed to read line!");
-        if input.trim() != "y" {
-            info!("Exiting...");
+        if input.trim().to_ascii_lowercase() != "o" {
+            println!("Exiting...");
             std::process::exit(0);
         }
     }
@@ -176,11 +181,9 @@ struct Settings {
 
 impl Settings {
     pub fn load() -> Settings {
-        info!("Loading settings...");
-
         let settings_path = Path::new("./settings.toml");
         if !settings_path.exists() {
-            warn!("Settings file not exists! creating it and exiting...");
+            println!("Settings file not exists! creating it and exiting...");
             File::create(settings_path).expect("Failed to create settings.toml.");
             std::process::exit(1);
         }
@@ -190,9 +193,6 @@ impl Settings {
         let mut settings_buffer = String::new();
         reader.read_to_string(&mut settings_buffer).expect("Failed to read lines from settings.toml");
         let settings: Settings = toml::from_str(&settings_buffer.as_str()).expect("Failed to deserialize settings.");
-
-        debug!("Settings: {:?}", settings);
-        info!("Settings loaded.");
 
         settings
     }
