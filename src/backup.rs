@@ -36,7 +36,16 @@ pub fn start(targets: &[Target],
             stack.push(path.clone());
             'iterate_path: while let Some(path) = stack.pop() {
                 if path.is_dir() {
-                    for path in fs::read_dir(&path).unwrap() {
+                    let read_dir = match fs::read_dir(&path) {
+                        Ok(read_dir) => read_dir,
+                        Err(error) => {
+                            eprintln!("Failed to iterate entries in \"{}\". Ignoring it.\nError: {}",
+                                      path.to_str().expect("Failed to got path"), error);
+                            continue;
+                        },
+                    };
+
+                    for path in read_dir {
                         let path = path.unwrap().path();
 
                         for filter in filters {
