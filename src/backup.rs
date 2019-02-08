@@ -25,7 +25,7 @@ pub fn start(targets: &[Target],
                   &mut |filter| filter.name.clone());
 
         for path in &target.paths {
-            let root_path_length = path.to_str().expect("Failed to got path").len();
+            let root_path_length = path.to_string_lossy().len();
 
             let mut stack: Vec<PathBuf> = Vec::new();
             stack.push(path.clone());
@@ -41,7 +41,7 @@ pub fn start(targets: &[Target],
                     Ok(read_dir) => read_dir,
                     Err(error) => {
                         eprintln!("  Failed to iterate entries in \"{}\". Ignoring it.\n    Error: {}",
-                                  path.to_str().expect("Failed to got path"), error);
+                                  path.to_string_lossy(), error);
                         continue;
                     }
                 };
@@ -83,7 +83,7 @@ fn execute_file(path: &Path,
                 target_name: &str,
                 root_path_length: usize,
                 archiver: &mut Builder<File>) {
-    let entry_path_str = path.to_str().expect("Failed to got path");
+    let entry_path_str = path.to_string_lossy();
     let mut archive_path = target_name.to_string();
     let entry_path_str_len = entry_path_str.len();
     if entry_path_str_len == root_path_length {
