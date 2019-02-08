@@ -17,51 +17,46 @@ pub fn start(targets: &[Target],
         let filters = get_filters(target_name, filters);
         let filters = filters.as_slice();
 
-        print!(
-            "Backing up target: {}\nFilters for filtering:",
-            target_name);
-        if filters.is_empty() {
-            println!(" NONE");
-        } else {
-            println!();
-            for filter in filters {
-                println!("\t- {}", &filter.name);
-            }
-        }
+        println!("Backing up target: {}", target_name);
+
+        enumerate("Paths", &target.paths,
+                  &mut |paths| paths.to_string_lossy().into_owned());
+        enumerate("Filters", &filters.to_vec(),
+                  &mut |filter| filter.name.clone());
 
         for path in &target.paths {
-            let root_path_length = path.to_str().expect("Failed to got path").len();
+            let root_path_length = path.to_string_lossy().len();
 
             let mut stack: Vec<PathBuf> = Vec::new();
             stack.push(path.clone());
             'iterate_path: while let Some(path) = stack.pop() {
-                if path.is_dir() {
-                    let read_dir = match fs::read_dir(&path) {
-                        Ok(read_dir) => read_dir,
-                        Err(error) => {
-                            eprintln!("Failed to iterate entries in \"{}\". Ignoring it.\nError: {}",
-                                      path.to_str().expect("Failed to got path"), error);
-                            continue;
-                        },
-                    };
-
-                    for path in read_dir {
-                        let path = path.unwrap().path();
-
-                        for filter in filters {
-                            if is_filterable(filter, &path) {
-                                continue 'iterate_path;
-                            }
-                        }
-
-                        stack.push(path);
-                    }
+                if !path.is_dir() {
+                    execute_file(&path, target_name,
+                                 root_path_length,
+                                 archiver);
                     continue;
                 }
 
-                execute_file(&path, target_name,
-                             root_path_length,
-                             archiver);
+                let read_dir = match fs::read_dir(&path) {
+                    Ok(read_dir) => read_dir,
+                    Err(error) => {
+                        eprintln!("  Failed to iterate entries in \"{}\". Ignoring it.\n    Error: {}",
+                                  path.to_string_lossy(), error);
+                        continue;
+                    }
+                };
+
+                for path in read_dir {
+                    let path = path.unwrap().path();
+
+                    for filter in filters {
+                        if is_filterable(filter, &path) {
+                            continue 'iterate_path;
+                        }
+                    }
+
+                    stack.push(path);
+                }
             }
         }
     }
@@ -69,11 +64,26 @@ pub fn start(targets: &[Target],
     println!("Backup finished!");
 }
 
+fn enumerate<T>(name: &str,
+                list: &[T],
+                function: &mut FnMut(&T) -> String) {
+    print!("  {}:", name);
+    if list.is_empty() {
+        println!(" NONE");
+        return;
+    }
+
+    println!();
+    for element in list {
+        println!("    - {}", function(element));
+    }
+}
+
 fn execute_file(path: &Path,
                 target_name: &str,
                 root_path_length: usize,
                 archiver: &mut Builder<File>) {
-    let entry_path_str = path.to_str().expect("Failed to got path");
+    let entry_path_str = path.to_string_lossy();
     let mut archive_path = target_name.to_string();
     let entry_path_str_len = entry_path_str.len();
     if entry_path_str_len == root_path_length {
@@ -87,36 +97,28 @@ fn execute_file(path: &Path,
     let file = unwrap_or_confirm(File::open(&path),
                                  || format!("Failed to open \"{}\"", entry_path_str));
     let mut file = match file {
-        Ok(value) => {
-            value
-        },
+        Ok(value) => value,
         Err(action) => {
-            if action != Action::Retry {
-                return;
-            } else {
+            if action == Action::Retry {
                 execute_file(path,
                              target_name,
                              root_path_length,
                              archiver);
-                return;
             }
-        },
+            return;
+        }
     };
 
     let archive_result = unwrap_or_confirm(archiver.append_file(&archive_path, &mut file),
                                            || format!("Failed to archive \"{}\"", entry_path_str));
     if let Err(action) = archive_result {
-        if action != Action::Retry {
-            if action != Action::Retry {
-                return;
-            } else {
-                execute_file(path,
-                             target_name,
-                             root_path_length,
-                             archiver);
-                return;
-            }
+        if action == Action::Retry {
+            execute_file(path,
+                         target_name,
+                         root_path_length,
+                         archiver);
         }
+        return;
     };
 }
 
@@ -162,9 +164,7 @@ fn is_filterable(filter: &Filter,
 fn unwrap_or_confirm<T, F>(result: IOResult<T>,
                            error_message_func: F) -> Result<T, Action> where F: FnOnce() -> String {
     match result {
-        Ok(value) => {
-            Result::Ok(value)
-        },
+        Ok(value) => Result::Ok(value),
         Err(error) => {
             println!("{} : {}", error_message_func(), error);
 
@@ -183,15 +183,15 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
                 "i" => {
                     println!("Ignoring...");
                     Result::Err(Action::IgnoreOrContinue)
-                },
+                }
                 "r" => {
                     println!("Retrying...");
                     Result::Err(Action::Retry)
-                },
+                }
                 _ => {
                     println!("Exiting...");
                     std::process::exit(0);
-                },
+                }
             }
         }
     }
@@ -199,6 +199,12 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
 
 pub fn execute_commands(commands: &[Vec<String>],
                         archive_path: &str) {
+    if commands.is_empty() {
+        return;
+    }
+
+    println!("Executing commands...");
+
     for command in commands {
         if command.is_empty() {
             continue;
@@ -217,6 +223,7 @@ pub fn execute_commands(commands: &[Vec<String>],
             args_appended.push_str(arg_str);
         }
 
+        println!("Executing command: \"{}\"", args_appended);
         let exit_status = command
             .spawn()
             .expect("failed to run command.")
@@ -224,12 +231,14 @@ pub fn execute_commands(commands: &[Vec<String>],
             .expect("Execute failed!");
         println!("Executed in exit code {}", exit_status.code().unwrap());
     }
+
+    println!("All commands are executed!");
 }
 
 #[derive(PartialEq)]
 enum Action {
     Retry,
-    IgnoreOrContinue
+    IgnoreOrContinue,
 }
 
 pub struct Target {
