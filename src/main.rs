@@ -57,7 +57,7 @@ fn main() {
     archiver.into_inner().expect("Failed to finish the archiver")
         .flush().expect("Flush failed");
     backup::execute_commands(&commands_after_backup.as_slice(),
-                             archive_path.as_str());
+                             &dunce::realpath(archive_path).unwrap().to_string_lossy());
 }
 
 fn initialize_logger() {
