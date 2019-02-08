@@ -35,33 +35,33 @@ pub fn start(targets: &[Target],
             let mut stack: Vec<PathBuf> = Vec::new();
             stack.push(path.clone());
             'iterate_path: while let Some(path) = stack.pop() {
-                if path.is_dir() {
-                    let read_dir = match fs::read_dir(&path) {
-                        Ok(read_dir) => read_dir,
-                        Err(error) => {
-                            eprintln!("Failed to iterate entries in \"{}\". Ignoring it.\nError: {}",
-                                      path.to_str().expect("Failed to got path"), error);
-                            continue;
-                        },
-                    };
-
-                    for path in read_dir {
-                        let path = path.unwrap().path();
-
-                        for filter in filters {
-                            if is_filterable(filter, &path) {
-                                continue 'iterate_path;
-                            }
-                        }
-
-                        stack.push(path);
-                    }
+                if !path.is_dir() {
+                    execute_file(&path, target_name,
+                                 root_path_length,
+                                 archiver);
                     continue;
                 }
 
-                execute_file(&path, target_name,
-                             root_path_length,
-                             archiver);
+                let read_dir = match fs::read_dir(&path) {
+                    Ok(read_dir) => read_dir,
+                    Err(error) => {
+                        eprintln!("Failed to iterate entries in \"{}\". Ignoring it.\nError: {}",
+                                  path.to_str().expect("Failed to got path"), error);
+                        continue;
+                    },
+                };
+
+                for path in read_dir {
+                    let path = path.unwrap().path();
+
+                    for filter in filters {
+                        if is_filterable(filter, &path) {
+                            continue 'iterate_path;
+                        }
+                    }
+
+                    stack.push(path);
+                }
             }
         }
     }
