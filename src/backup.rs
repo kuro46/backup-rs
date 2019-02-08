@@ -154,9 +154,7 @@ fn is_filterable(filter: &Filter,
 fn unwrap_or_confirm<T, F>(result: IOResult<T>,
                            error_message_func: F) -> Result<T, Action> where F: FnOnce() -> String {
     match result {
-        Ok(value) => {
-            Result::Ok(value)
-        },
+        Ok(value) => Result::Ok(value),
         Err(error) => {
             println!("{} : {}", error_message_func(), error);
 
