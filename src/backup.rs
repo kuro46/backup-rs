@@ -17,27 +17,12 @@ pub fn start(targets: &[Target],
         let filters = get_filters(target_name, filters);
         let filters = filters.as_slice();
 
-        print!(
-            "Backing up target: {}\n  Paths:",
-            target_name);
-        if target.paths.is_empty() {
-            println!(" NONE");
-        } else {
-            println!();
-            for path in &target.paths {
-                println!("    - {}", &path.to_str().unwrap());
-            }
-        }
+        println!("Backing up target: {}", target_name);
 
-        print!("  Filters:");
-        if filters.is_empty() {
-            println!(" NONE");
-        } else {
-            println!();
-            for filter in filters {
-                println!("    - {}", &filter.name);
-            }
-        }
+        enumerate("Paths", &target.paths,
+                  &mut |paths| paths.to_string_lossy().into_owned());
+        enumerate("Filters", &filters.to_vec(),
+                  &mut |filter| filter.name.clone());
 
         for path in &target.paths {
             let root_path_length = path.to_str().expect("Failed to got path").len();
@@ -77,6 +62,21 @@ pub fn start(targets: &[Target],
     }
 
     println!("Backup finished!");
+}
+
+fn enumerate<T>(name: &str,
+                list: &[T],
+                function: &mut FnMut(&T) -> String) {
+    print!("  {}:", name);
+    if list.is_empty() {
+        println!(" NONE");
+        return;
+    }
+
+    println!();
+    for element in list {
+        println!("    - {}", function(element));
+    }
 }
 
 fn execute_file(path: &Path,
