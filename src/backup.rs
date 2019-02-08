@@ -18,14 +18,14 @@ pub fn start(targets: &[Target],
         let filters = filters.as_slice();
 
         print!(
-            "Backing up target: {}\nFilters:",
+            "Backing up target: {}\n  Filters:",
             target_name);
         if filters.is_empty() {
             println!(" NONE");
         } else {
             println!();
             for filter in filters {
-                println!("\t- {}", &filter.name);
+                println!("    - {}", &filter.name);
             }
         }
 
@@ -45,7 +45,7 @@ pub fn start(targets: &[Target],
                 let read_dir = match fs::read_dir(&path) {
                     Ok(read_dir) => read_dir,
                     Err(error) => {
-                        eprintln!("Failed to iterate entries in \"{}\". Ignoring it.\nError: {}",
+                        eprintln!("  Failed to iterate entries in \"{}\". Ignoring it.\n    Error: {}",
                                   path.to_str().expect("Failed to got path"), error);
                         continue;
                     }
