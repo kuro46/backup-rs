@@ -89,30 +89,26 @@ fn execute_file(path: &Path,
     let mut file = match file {
         Ok(value) => value,
         Err(action) => {
-            if action != Action::Retry {
-                return;
-            } else {
+            if action == Action::Retry {
                 execute_file(path,
                              target_name,
                              root_path_length,
                              archiver);
-                return;
             }
+            return;
         },
     };
 
     let archive_result = unwrap_or_confirm(archiver.append_file(&archive_path, &mut file),
                                            || format!("Failed to archive \"{}\"", entry_path_str));
     if let Err(action) = archive_result {
-        if action != Action::Retry {
-            return;
-        } else {
+        if action == Action::Retry {
             execute_file(path,
                          target_name,
                          root_path_length,
                          archiver);
-            return;
         }
+        return;
     };
 }
 
