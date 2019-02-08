@@ -87,9 +87,7 @@ fn execute_file(path: &Path,
     let file = unwrap_or_confirm(File::open(&path),
                                  || format!("Failed to open \"{}\"", entry_path_str));
     let mut file = match file {
-        Ok(value) => {
-            value
-        },
+        Ok(value) => value,
         Err(action) => {
             if action != Action::Retry {
                 return;
