@@ -107,15 +107,13 @@ fn execute_file(path: &Path,
                                            || format!("Failed to archive \"{}\"", entry_path_str));
     if let Err(action) = archive_result {
         if action != Action::Retry {
-            if action != Action::Retry {
-                return;
-            } else {
-                execute_file(path,
-                             target_name,
-                             root_path_length,
-                             archiver);
-                return;
-            }
+            return;
+        } else {
+            execute_file(path,
+                         target_name,
+                         root_path_length,
+                         archiver);
+            return;
         }
     };
 }
