@@ -176,7 +176,7 @@ struct Settings {
     archive_path: String,
     targets: Vec<TargetSetting>,
     filters: Option<Vec<FilterSetting>>,
-    commands_after_backup: Option<Vec<Vec<String>>>
+    commands_after_backup: Option<Vec<Vec<String>>>,
 }
 
 impl Settings {

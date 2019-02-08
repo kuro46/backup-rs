@@ -48,7 +48,7 @@ pub fn start(targets: &[Target],
                         eprintln!("Failed to iterate entries in \"{}\". Ignoring it.\nError: {}",
                                   path.to_str().expect("Failed to got path"), error);
                         continue;
-                    },
+                    }
                 };
 
                 for path in read_dir {
@@ -96,7 +96,7 @@ fn execute_file(path: &Path,
                              archiver);
             }
             return;
-        },
+        }
     };
 
     let archive_result = unwrap_or_confirm(archiver.append_file(&archive_path, &mut file),
@@ -173,15 +173,15 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
                 "i" => {
                     println!("Ignoring...");
                     Result::Err(Action::IgnoreOrContinue)
-                },
+                }
                 "r" => {
                     println!("Retrying...");
                     Result::Err(Action::Retry)
-                },
+                }
                 _ => {
                     println!("Exiting...");
                     std::process::exit(0);
-                },
+                }
             }
         }
     }
@@ -228,7 +228,7 @@ pub fn execute_commands(commands: &[Vec<String>],
 #[derive(PartialEq)]
 enum Action {
     Retry,
-    IgnoreOrContinue
+    IgnoreOrContinue,
 }
 
 pub struct Target {
