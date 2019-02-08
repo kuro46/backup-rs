@@ -191,6 +191,12 @@ fn unwrap_or_confirm<T, F>(result: IOResult<T>,
 
 pub fn execute_commands(commands: &[Vec<String>],
                         archive_path: &str) {
+    if commands.is_empty() {
+        return;
+    }
+
+    println!("Executing commands...");
+
     for command in commands {
         if command.is_empty() {
             continue;
@@ -209,6 +215,7 @@ pub fn execute_commands(commands: &[Vec<String>],
             args_appended.push_str(arg_str);
         }
 
+        println!("Executing command: \"{}\"", args_appended);
         let exit_status = command
             .spawn()
             .expect("failed to run command.")
@@ -216,6 +223,8 @@ pub fn execute_commands(commands: &[Vec<String>],
             .expect("Execute failed!");
         println!("Executed in exit code {}", exit_status.code().unwrap());
     }
+
+    println!("All commands are executed!");
 }
 
 #[derive(PartialEq)]
