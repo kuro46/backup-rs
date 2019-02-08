@@ -18,7 +18,7 @@ pub fn start(targets: &[Target],
         let filters = filters.as_slice();
 
         print!(
-            "Backing up target: {}\nFilters for filtering:",
+            "Backing up target: {}\nFilters:",
             target_name);
         if filters.is_empty() {
             println!(" NONE");
