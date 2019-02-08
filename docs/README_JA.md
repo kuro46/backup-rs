@@ -16,7 +16,7 @@ Rustで書かれたシンプルなバックアップソフト
 2. backup-rsディレクトリで`cargo build --release`を実行
 
 Windowsの場合は[ここ](https://github.com/kuro46/backup-rs/releases)からバイナリをダウンロードできます。  
-Windows10(64bit)で動作確認済
+Windows10Home(64bit)で動作確認済
 
 # 設定
 
