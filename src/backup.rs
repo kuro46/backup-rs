@@ -18,8 +18,18 @@ pub fn start(targets: &[Target],
         let filters = filters.as_slice();
 
         print!(
-            "Backing up target: {}\n  Filters:",
+            "Backing up target: {}\n  Paths:",
             target_name);
+        if target.paths.is_empty() {
+            println!(" NONE");
+        } else {
+            println!();
+            for path in &target.paths {
+                println!("    - {}", &path.to_str().unwrap());
+            }
+        }
+
+        print!("  Filters:");
         if filters.is_empty() {
             println!(" NONE");
         } else {
