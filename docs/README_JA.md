@@ -27,63 +27,42 @@ Windows10Home(64bit)で動作確認済
 ```toml
 # settings.toml
 
-# この設定の場合、以下のような流れになる
-# 1. "/foo/bar/"ディレクトリと"/buzz"ディレクトリを"C:/%Y-%m-%d.tar"に追加
-# 2. "foo.exe arg1 arg2"と"bar.exe arg1 arg2 arg3"を実行
-# 3. 終わり
+# https://docs.rs/chrono/0.4/chrono/format/strftime/index.html
+archive-file-path = "./%Y-%m-%d.tar.tar"
 
-# アーカイブファイルのパス
-# 日付フォーマットが使用可能
-# 詳細: https://docs.rs/chrono/0.4.6/chrono/format/strftime/index.html
-# 必須
-archive_path = "C:/%Y-%m-%d.tar"
-
-# バックアップ終了後に実行するコマンドリスト
-# "%archive_path%"とすることでアーカイブの絶対パスが代入される
-# 任意: デフォルト値は空の配列
-# 注意: コマンドには絶対パスを使用すること
-commands_after_backup = [
-    ["foo.exe","arg1","arg2"],
-    ["bar.exe","arg1","arg2","arg3"]
-]
-
-# ターゲットリスト
-# 必須
 [[targets]]
-# /foo/barと/buzzをバックアップする
+name = "target-name"
+path = "target-path"
 
-# このターゲットの名前
-# 必須
-name = "target_name"
-# パスのリスト
-# 必須
-paths = [
-    "/foo/bar/",
-    "/buzz/"
-]
-
-# フィルターリスト
-# 任意: デフォルト値は空の配列
 [[filters]]
-# Cargoのtargetディレクトリを除外するフィルター
+# target-nameをバックアップ中にCargo.tomlがあれば、
+# そのファイルのディレクトリ内のtargetディレクトリを除外するフィルタ
+name = "rust-project"
+applied-to = "target-name"
+exclude = ["./target"]
+if-exists = "./Cargo.toml"
+[[filters]]
+# target-nameをバックアップ中にpom.xmlがあれば、
+# そのファイルのディレクトリ内のtargetディレクトリを除外するフィルタ
+name = "maven-project"
+applied-to = "target-name"
+exclude = ["./target"]
+if-exists = "./pom.xml"
+[[filters]]
+# target-nameをバックアップ中にbuild.gradle.ktsがあれば、
+# そのファイルのディレクトリ内のbuildディレクトリと.gradleディレクトリを除外する
+name = "gradle-project-with-kotlin-DSL"
+applied-to = "target-name"
+exclude = ["./build", "./.gradle"]
+if-exists = "./build.gradle.kts"
+[[filters]]
+# target-nameをバックアップ中にbuild.gradleがあれば、
+# そのファイルのディレクトリ内のbuildディレクトリと.gradleディレクトリを除外する
+name = "gradle-project"
+applied-to = "target-name"
+exclude = ["./build", "./.gradle"]
+if-exists = "./build.gradle"
 
-# フィルターの名前
-# 必須
-name = "exclude_cargo_target"
-# このフィルターが有効なターゲットのリスト
-# 必須
-# この場合は"target_name"でのみ有効
-# また、"global"と設定することですべてのターゲットに対して有効化できる
-scopes = ["target_name"]
-# このフィルターが適用される条件
-# 必須
-# この場合は"Cargo.toml"が存在した場合に"targets"に記述されているパスを除外する
-# また、パスの左に!をつけると、存在しなかった場合に"targets"に記述されているパスを除外する
-conditions = ["./Cargo.toml"]
-# このフィルターのターゲットパス
-# 必須
-# この場合は"conditions"の条件が一致した場合に"targets"を除外する
-targets = ["./targets/"]
 ```
 
 # 実行
