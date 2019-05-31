@@ -18,10 +18,13 @@ fn main() {
 }
 
 fn execute(settings: &Settings) {
-    let archive_file_name = Local::now().format(&settings.archive_file_path).to_string();
-    let mut archive_file = File::create(archive_file_name)
-        .expect("Failed to create archive file");
-    let mut archiver = Builder::new(&mut archive_file);
+    let mut archiver= {
+        let archive_file_name = Local::now().format(&settings.archive_file_path).to_string();
+        let archive_file = File::create(archive_file_name)
+            .expect("Failed to create archive file");
+
+        Builder::new(archive_file)
+    };
 
     for target in &settings.targets {
         println!("Current target: {}({})", &target.name, &target.path);
@@ -47,8 +50,8 @@ fn execute(settings: &Settings) {
         }
     }
 
-    let need_flush = archiver.into_inner().expect("Failed to finish the archiver");
-    need_flush.flush().expect("Failed to flush the archive file");
+    let mut archive_file = archiver.into_inner().expect("Failed to finish the archiver");
+    archive_file.flush().expect("Failed to flush the archive file");
 }
 
 fn is_filterable_dir(filters: &[&Filter], path: &Path) -> bool {
@@ -80,7 +83,7 @@ fn append_paths(parent: &Path, child: &str) -> PathBuf {
 fn execute_dir_entry(
     entry_path: &Path,
     target: &Target,
-    archiver: &mut Builder<&mut File>
+    archiver: &mut Builder<File>
 ) {
     if !entry_path.is_file() {
         return
