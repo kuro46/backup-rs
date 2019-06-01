@@ -6,29 +6,34 @@ Rustで書かれたシンプルなバックアップソフト
 
 - 複数パスのバックアップ
 - アーカイブの日付フォーマット
-- バックアップ後に実行する任意のコマンドの設定
 - パスのフィルタリング (例: Cargoのtargetディレクトリの除外)
+
+# ダウンロード
+
+Windowsの用のビルドは[ここ](https://github.com/kuro46/backup-rs/releases/downloads/latest/backup-windows-x86_64.zip)からダウンロードできます。  
+また、[releases](https://github.com/kuro46/backup-rs/releases)から任意のバージョンをダウンロードすることもできます。
 
 # ビルド
 
-1. Rustをインストール
+このリポジトリをcloneし、backup-rsディレクトリで`cargo build --release`を実行してください。
 
-2. backup-rsディレクトリで`cargo build --release`を実行
+# 使い方
 
-Windowsの場合は[ここ](https://github.com/kuro46/backup-rs/releases)からバイナリをダウンロードできます。  
-Windows10Home(64bit)で動作確認済
+## Windows
+
+設定後、backup.exeを実行することでバックアップを開始します。
 
 # 設定
 
-このソフトは設定にtomlフォーマットを使用します。
-また、ファイル名は`settings.toml`、
-フォルダは実行可能ファイルの存在するフォルダとします。
+このソフトは、`./settings.toml`を設定ファイルとして扱います。  
+書き方は下を参考にしてください。
 
 ```toml
 # settings.toml
 
 # https://docs.rs/chrono/0.4/chrono/format/strftime/index.html
-archive-file-path = "./%Y-%m-%d.tar.tar"
+# バックアップしたアーカイブの保存先(tar形式です)
+archive-file-path = "./%Y-%m-%d.tar"
 
 [[targets]]
 name = "target-name"
@@ -64,10 +69,3 @@ exclude = ["./build", "./.gradle"]
 if-exists = "./build.gradle"
 
 ```
-
-# 実行
-
-`cargo run --release`  
-または  
-`backup-rs/target/release/backup.exe`  
-を実行
