@@ -17,6 +17,12 @@ Windowsの用のビルドは[ここ](https://github.com/kuro46/backup-rs/release
 
 このリポジトリをcloneし、backup-rsディレクトリで`cargo build --release`を実行してください。
 
+# 使い方
+
+## Windows
+
+設定後、backup.exeを実行することでバックアップを開始します。
+
 # 設定
 
 このソフトは、`./settings.toml`を設定ファイルとして扱います。  
@@ -26,7 +32,8 @@ Windowsの用のビルドは[ここ](https://github.com/kuro46/backup-rs/release
 # settings.toml
 
 # https://docs.rs/chrono/0.4/chrono/format/strftime/index.html
-archive-file-path = "./%Y-%m-%d.tar.tar"
+# バックアップしたアーカイブの保存先(tar形式です)
+archive-file-path = "./%Y-%m-%d.tar"
 
 [[targets]]
 name = "target-name"

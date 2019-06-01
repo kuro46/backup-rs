@@ -11,11 +11,17 @@ A simple backup software written in Rust.
 # Downloads
 
 Click [here](https://github.com/kuro46/backup-rs/releases/downloads/latest/backup-windows-x86_64.zip) to download windows build.  
-or click [here](https://github.com/kuro46/backup-rs/releases) to download any versions.
+Or click [here](https://github.com/kuro46/backup-rs/releases) to download any versions.
 
 # Build
 
 Clone this repository and execute `cargo build --release` at "backup-rs" directory.
+
+# Usage
+
+## Windows
+
+After setting, execute backup.exe to start backup.
 
 # Setting
 
@@ -26,7 +32,8 @@ Formats are shown below.
 # settings.toml
 
 # https://docs.rs/chrono/0.4/chrono/format/strftime/index.html
-archive-file-path = "./%Y-%m-%d.tar.tar"
+# Path of archive file
+archive-file-path = "./%Y-%m-%d.tar"
 
 [[targets]]
 name = "target-name"
