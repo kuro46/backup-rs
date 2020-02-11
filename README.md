@@ -1,5 +1,7 @@
 \[English|[日本語](docs/README_JA.md)\]
 
+**Deprecated! Please check [kuro46/simple-backup](https://github.com/kuro46/simple-backup)!**
+
 A simple backup software written in Rust.
 
 # Features
